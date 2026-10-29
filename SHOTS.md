@@ -160,3 +160,6 @@ cp pipeline/land/landLoop.py . ; env $(cat land_loop_final.env) OUTS=3 python3 l
 ## 19 · Fire (test stage) 🔶
 - Source `9d8441a2-fire.mp4` (377 fr). `fire_clip.py src outdir f0 f1`, preset `presets/fire_preset.env`
   (no depth model; embers from the flame top; TRANS=1 → in from below / out upwards via depth_sheet `odir`). Test: 100–149.
+- Fire full: `env $(cat fire_full.env) python3 fire_clip.py <src> out/fire_full 0 377` (one process).
+- Ballerina 2 full (source 4–19 s): `B_SKIN=0.9 python3 bal2_prep.py out/bal2_1920.mp4 out/depth_bal2 out/bal2_relit_100.mp4 100 475`,
+  then `env $(cat bal2_full.env) STILL=out/bal2_full/bal2 python3 depth_sheet_clip.py out/depth_bal2 100 375 x.mp4 out/bal2_relit_100.mp4 -100`.
