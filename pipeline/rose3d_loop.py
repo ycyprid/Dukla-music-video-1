@@ -86,7 +86,66 @@ def offsets(t):
     dth = EV('R_SPIN', '1.5') * e * (0.6 + 0.8 * q4) + 0.6 * e * s           # around the stem, with the rotation
     dr = (EV('R_OUT', '0.10') + 0.25 * rad0) * e * (0.5 + q5)
     dy = EV('R_UPL', '0.14') * e * (0.4 + q3) + 0.05 * np.sin(2 * np.pi * (2 * s + q2)) * e
+    if os.environ.get('R_TRANS'):
+        # materialise: every particle spirals in from far out (wide, high), stem foot first, landing staggered;
+        # dissolve: the mirror -- peels off and spirals away up and around, stem foot first. Big amplitude.
+        key = np.clip(0.7 * hgt + 0.3 * q2, 0, 1)
+        tin = 0.08 + EV('R_INSP', '1.6') * key; din = EV('R_INDU', '1.4') * (0.75 + 0.5 * q3)
+        si = np.clip((t - tin) / din, 0, 1); gi = (1 - si) ** 1.6 * (si < 1) + (t < tin)
+        tout = T - EV('R_OUTLEAD', '2.9') + EV('R_OUTSP', '1.5') * key; dout = EV('R_OUTDU', '1.2') * (0.75 + 0.5 * q3)
+        so = np.clip((t - tout) / dout, 0, 1); go = so ** 1.7
+        g = np.maximum(gi, go)
+        TR['g'] = g; TR['ign'] = t < tin; TR['gone'] = so >= 1
+        big = g > e
+        e = np.maximum(e, g)
+        dth = np.where(big, EV('R_TSPIN', '5.0') * g * (0.6 + 0.8 * q4), dth)
+        dr = np.where(big, (EV('R_TOUT', '0.9') * (0.4 + q5)) * g, dr)
+        dy = np.where(big, EV('R_TUP', '0.7') * g * (q3 - 0.25) + 0.08 * np.sin(2 * np.pi * (2 * g + q2)) * g, dy)
     return e, dth, dr, dy
+
+
+TR = {}
+
+
+def orbits(t, zb):
+    """comet streams circling the rose in 3D: tilted rings / helices around the stem axis, each a head + fading
+    tail, whole turns per loop (seamless), hidden behind the rose, brightness / size by distance"""
+    if 'orb' not in LREF:
+        g_ = np.random.default_rng(23); S_ = []
+        for k in range(int(EV('R_NORB', '7'))):
+            S_.append(dict(r=g_.uniform(0.30, 0.55), y0=g_.uniform(-0.35, 0.40), tilt=g_.uniform(-0.45, 0.45),
+                           tdir=g_.uniform(0, 2 * np.pi), turns=int(g_.integers(2, 5)), ph=g_.random(),
+                           heli=g_.uniform(-0.08, 0.08), n=int(g_.integers(300, 600)), tail=g_.uniform(0.18, 0.4),
+                           wob=g_.uniform(0.01, 0.04), jit=g_.normal(0, 0.012, (700, 3))))
+        LREF['orb'] = S_
+    yaw = yaw0 + EV('R_DIR', '-1') * 2 * np.pi * EV('R_TURNS', '1') * t / T
+    U, V_, Wt, C = [], [], [], []
+    amp = 1.0
+    if os.environ.get('R_TRANS'):                     # streams arrive with the forming, leave with the dissolve
+        a_ = np.clip((t - 0.2) / 1.2, 0, 1); b_ = np.clip((T - 0.25 - t) / 1.4, 0, 1)
+        amp = (a_ * a_ * (3 - 2 * a_)) * (b_ * b_ * (3 - 2 * b_))
+    for S in LREF['orb']:
+        n = S['n']; sf = np.linspace(0, 1, n)                       # 0 = head .. 1 = tail end
+        th = 2 * np.pi * (S['turns'] * t / T + S['ph']) * EV('R_DIR', '-1') * -1 - EV('R_DIR', '-1') * -1 * 2 * np.pi * S['tail'] * sf
+        x = S['r'] * np.cos(th); z = S['r'] * np.sin(th)
+        y = S['y0'] + S['heli'] * np.sin(th * 1.0) + S['wob'] * np.sin(3 * th + S['ph'] * 6)
+        # tilt the ring about a horizontal axis at angle tdir
+        ca, sa = np.cos(S['tdir']), np.sin(S['tdir']); ct, st = np.cos(S['tilt']), np.sin(S['tilt'])
+        xr = x * ca + z * sa; zr = -x * sa + z * ca
+        yr = y * ct - zr * st; zr2 = y * st + zr * ct
+        x2 = xr * ca - zr2 * sa; z2 = xr * sa + zr2 * ca
+        Pw = np.stack([x2, yr, z2], -1) + S['jit'][:n] * (0.3 + sf[:, None])     # tail frays a little
+        # world-fixed (not turning with the rose): undo the turntable so streams keep their own speed
+        Ry = np.array([[np.cos(-yaw), 0, np.sin(-yaw)], [0, 1, 0], [-np.sin(-yaw), 0, np.cos(-yaw)]])
+        uk, vk, zk, _, _ = project(Pw @ Ry.T, yaw)
+        ins = (uk > 0) & (uk < W - 1) & (vk > 0) & (vk < H - 1)
+        vis = ins.copy()
+        vis[ins] = zk[ins] <= zb[vk[ins].astype(int), uk[ins].astype(int)] + 0.01
+        near = np.clip((Dcam + 0.6 - zk) / 1.2, 0.25, 1.3)
+        w = (1 - sf) ** 1.6 * (0.25 + 0.75 * (sf < 0.03)) * EV('R_ORBW', '0.5') * near * amp
+        tw = 1 + 1.2 * np.maximum(np.sin(2 * np.pi * (6 * t / T + 7 * sf + S['ph'])), 0) ** 6
+        U.append(uk[vis]); V_.append(vk[vis]); Wt.append((w * tw)[vis]); C.append((235 - 70 * sf)[vis])
+    return np.concatenate(U), np.concatenate(V_), np.concatenate(Wt), np.concatenate(C)
 
 
 def project(Pw, yaw):
@@ -103,7 +162,7 @@ if os.environ.get('R_LREF'):
 
 
 def frame(t):
-    yaw = yaw0 + EV('R_DIR', '-1') * 2 * np.pi * t / T                   # front turns left -> right
+    yaw = yaw0 + EV('R_DIR', '-1') * 2 * np.pi * EV('R_TURNS', '1') * t / T     # front turns left -> right
     e, dth, dr, dy = offsets(t)
     home = e < 0.02
     u, v, Zc, Pc, R = project(P, yaw)
@@ -118,7 +177,7 @@ def frame(t):
     ui = np.round(u).astype(int); vi = np.round(v).astype(int)
     ok = home & (ui >= 0) & (ui < W) & (vi >= 0) & (vi < H) & (Zc > 0.1)
     idx = vi[ok] * W + ui[ok]; zz = Zc[ok]
-    order = np.lexsort((zz, idx)); idx_s = idx[order]; first = np.r_[True, idx_s[1:] != idx_s[:-1]]
+    order = np.lexsort((zz, idx)); idx_s = idx[order]; first = np.r_[True, idx_s[1:] != idx_s[:-1]] if idx_s.size else np.zeros(0, bool)
     sel = np.nonzero(ok)[0][order[first]]
     zbuf = np.full(H * W, np.inf, np.float32); zbuf[idx_s[first]] = Zc[sel]
     lbuf = np.zeros(H * W, np.float32); lbuf[idx_s[first]] = lum_p[sel]
@@ -129,6 +188,7 @@ def frame(t):
     zb = np.where(cov > 0, zf, cv2.blur(zf, (3, 3)) / ws); lb = np.where(cov > 0, lf, cv2.blur(lf, (3, 3)) / ws)
     m = cv2.morphologyEx(cov, cv2.MORPH_CLOSE, np.ones((3, 3), np.uint8)).astype(np.float32)
     m = cv2.morphologyEx(m, cv2.MORPH_OPEN, np.ones((2, 2), np.uint8))       # lone leftover specks: no sheet dot
+    zocc = np.where(m > 0, zb, np.inf).astype(np.float32)                   # occluder: only where the rose is
     zlo, zhi = 2.2 - 0.6, 2.2 + 0.6                                          # fixed depth range (no pumping)
     dep = np.where(m > 0, 0.25 + 0.75 * np.clip((zhi - zb) / (zhi - zlo), 0, 1), 0).astype(np.float32)
     if 'lref' not in LREF:                                                    # fixed exposure from the rest pose
@@ -136,7 +196,12 @@ def frame(t):
     lum = (lb * m / LREF['lref']).astype(np.float32)
     DS.PRESMAP['a'] = np.clip((cv2.GaussianBlur(m, (0, 0), DS.PITCH_PX * 0.6) - 0.45) / 0.45, 0, 1).astype(np.float32)
     # ---- particles in flight: a share of them as sparks, motion-blurred over the shutter ----
-    fl = np.nonzero(~home & (q5 < EV('R_SPK', '0.06')))[0]
+    spk = EV('R_SPK', '0.06')
+    if os.environ.get('R_TRANS'):
+        spk_d = np.where(TR['g'] > 0.02, spk * EV('R_TSPK', '4'), spk)
+        fl = np.nonzero(~home & (q5 < spk_d) & ~TR['gone'])[0]
+    else:
+        fl = np.nonzero(~home & (q5 < spk))[0]
     U, Vv, Wt, Ci = [], [], [], []
     K = int(EV('R_MBK', '6'))
     for k in range(K):
@@ -144,13 +209,16 @@ def frame(t):
         ek, dthk, drk, dyk = offsets(tk)
         a_ = ang0[fl] + dthk[fl]; r_ = rad0[fl] + drk[fl]
         Pf = np.stack([r_ * np.cos(a_), P[fl, 1] + dyk[fl], r_ * np.sin(a_)], -1)
-        uk, vk, zk, _, _ = project(Pf, yaw0 + EV('R_DIR', '-1') * 2 * np.pi * tk / T)
+        uk, vk, zk, _, _ = project(Pf, yaw0 + EV('R_DIR', '-1') * 2 * np.pi * EV('R_TURNS', '1') * tk / T)
         ins = (uk > 0) & (uk < W - 1) & (vk > 0) & (vk < H - 1)
         hid = np.zeros(fl.size, bool)
-        hid[ins] = zk[ins] > zb[vk[ins].astype(int), uk[ins].astype(int)] + 0.02     # behind the resting rose
+        hid[ins] = zk[ins] > zocc[vk[ins].astype(int), uk[ins].astype(int)] + 0.02     # behind the resting rose
         vis = ins & ~hid
         lv = np.clip(lum_p[fl] / LREF['lref'], 0, 1)
         wv = (0.35 + 0.65 * lv) * np.sin(np.pi * np.clip(ek[fl], 0, 1)) ** 0.5 * EV('R_SPKW', '0.55') / K
+        if os.environ.get('R_TRANS'):                     # transition sparks: present the whole flight, fade at the far end
+            gk = TR['g'][fl]
+            wv = np.where(gk > 0.02, (0.35 + 0.65 * lv) * EV('R_TSPKW', '1.0') / K * np.clip((1 - gk) / 0.35, 0, 1) ** 0.7 * 0.7, wv)
         tw_ = 1 + 1.5 * np.maximum(np.sin(2 * np.pi * (3.0 * tk / T * 8 + q4[fl])), 0) ** 8
         U.append(uk[vis]); Vv.append(vk[vis]); Wt.append((wv * tw_)[vis]); Ci.append((150 + 105 * lv)[vis])
     # seamless dust (replaces the renderer's free-drifting specks): slow closed orbits, whole-cycle twinkles
@@ -162,6 +230,9 @@ def frame(t):
     ph_ = 2 * np.pi * (t / T + dph)
     U.append(du0 + da * np.cos(ph_)); Vv.append(dv0 + 0.6 * da * np.sin(ph_))
     Wt.append(dw * EV('R_DUST', '0.35') * (0.5 + 0.5 * np.sin(2 * np.pi * dk * t / T + 6.28 * dph) ** 2)); Ci.append(dc)
+    if EV('R_ORB', '1') > 0:
+        ou, ov, ow, oc = orbits(t, zocc)
+        U.append(ou); Vv.append(ov); Wt.append(ow); Ci.append(oc)
     U, Vv, Wt, Ci = (np.concatenate(a_) for a_ in (U, Vv, Wt, Ci))
     DS.EXTRA.update(u=U, v=Vv, w=Wt, col=L.PAL[np.clip(Ci, 0, 255).astype(np.uint8)])
     img = DS.render(dep, 1, t, None, None, None, None, lum)

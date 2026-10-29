@@ -147,3 +147,5 @@ cp pipeline/land/landLoop.py . ; env $(cat land_loop_final.env) OUTS=3 python3 l
   Z is the model's up axis (`R_UP=0,0,1`); turntable angle `R_YAW` (deg). Preset `presets/rose3d_sf.env` (yaw 190°).
 - Loop: `rose3d_loop.py rosa.obj rosa.jpg outdir f0 f1`, preset `presets/rose3d_loop.env` (T = 24 beats = 9.86 s,
   one turn + 2 particle waves per loop, seamless). Full loop = frames 0–245 (9.84 s, 24 beats; split 0–123 / 123–246 across 2 processes). 2 s test = frames 20–69.
+- v2 (2× rotation + orbiting comet streams): preset `presets/rose3d_loop2.env`; with transitions in/out:
+  `presets/rose3d_trans.env` (frames 0–245, first/last frame black). Run each in ONE process (frames 0 246).
