@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+models/
+out/
+depthjobs/
+*.mp4
+*.png
+*.onnx

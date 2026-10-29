@@ -1,0 +1,181 @@
+"""Night-sky shot in the halftone look: every star is its own glistening particle, the Milky Way glow and the trees
+are the dot sheet.
+  1. sky motion: consecutive star matches -> similarity transforms, chained and smoothed over time (the footage has
+     duplicate frames; the smooth fit removes their hitch) and resampled to 25 fps
+  2. a clean sky mosaic (all frames aligned + averaged, trees masked out) -> star catalogue (sub-pixel, flux) + glow
+  3. per output frame: glow warped into place + the footage's own trees -> sheet luminance; stars -> EXTRA particles
+     (own breathing + own sparse flashes, cross glints on the brightest, hidden behind the trees)
+usage: python3 stars_clip.py src.mp4 out.mp4"""
+import sys, os
+import numpy as np, cv2
+from scipy.spatial import cKDTree
+import common
+common.FPS = 25
+import depth_sheet as DS
+from common import W, H, Writer
+
+src, out = sys.argv[1], sys.argv[2]
+cap = cv2.VideoCapture(src); SFPS = cap.get(cv2.CAP_PROP_FPS) or 24.0
+G = []
+while True:
+    ok, f = cap.read()
+    if not ok:
+        break
+    G.append(cv2.cvtColor(f, cv2.COLOR_BGR2GRAY))                  # uint8 (memory)
+N = len(G); FH, FW = G[0].shape[:2]
+print('frames', N, 'fps', SFPS)
+
+
+def stars(g, th):
+    hp = g - cv2.GaussianBlur(g, (0, 0), 3)
+    mx = cv2.dilate(hp, np.ones((9, 9), np.uint8))
+    ys, xs = np.nonzero((hp == mx) & (hp > th))
+    return np.stack([xs, ys], -1).astype(np.float32), hp
+
+
+# ---- static tree mask (trees don't move; the sky drifts behind them) ----
+med = np.median(np.stack(G[0:120:4]), 0).astype(np.float32)                       # stars move -> median = glow + dark trees
+medb = cv2.GaussianBlur(med, (0, 0), 3)
+skylev = cv2.GaussianBlur(cv2.dilate(cv2.resize(medb, (192, 108), interpolation=cv2.INTER_AREA), np.ones((9, 9), np.uint8)), (0, 0), 6)
+skylev = cv2.resize(skylev, (FW, FH), interpolation=cv2.INTER_CUBIC)
+tree = np.clip((0.62 * skylev - medb) / (0.18 * skylev + 1e-3), 0, 1)
+tree = cv2.morphologyEx(tree, cv2.MORPH_CLOSE, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9, 9)))
+tree = cv2.GaussianBlur(tree, (0, 0), 2.0)
+print('tree fraction %.3f' % (tree > 0.5).mean())
+
+# ---- sky motion ----
+P = [stars(g.astype(np.float32) * (1 - tree), 70)[0] for g in G]
+Ms = [np.eye(3)]
+for j in range(N - 1):
+    d, ix = cKDTree(P[j + 1]).query(P[j], distance_upper_bound=8)
+    ok_ = np.isfinite(d)
+    Hm = None
+    if ok_.sum() > 30:                                            # sky rotating past a still camera = a homography
+        Hm, _ = cv2.findHomography(P[j][ok_], P[j + 1][ix[ok_]], cv2.RANSAC, 1.0)
+    if Hm is None:
+        Hm = np.eye(3)
+    M_ = Hm @ Ms[-1]; Ms.append(M_ / M_[2, 2])                    # frame-0 coords -> frame-j coords
+# smooth fit of the 8 homography parameters vs time (duplicate frames -> zero steps, smoothed away)
+prm = np.array([M.ravel()[:8] for M in Ms])
+tj = np.arange(N) / SFPS
+coef = [np.polyfit(tj, prm[:, k], 5) for k in range(8)]
+
+
+def Mt(t):                                                        # smoothed frame-0 -> frame(t) transform
+    return np.append([np.polyval(c, t) for c in coef], 1.0).reshape(3, 3)
+
+
+chk = np.array([[200, 200, 1], [1700, 200, 1], [200, 900, 1], [1700, 900, 1], [960, 540, 1.0]]).T
+err = []
+for j in range(N):
+    a_ = Ms[j] @ chk; b_ = Mt(tj[j]) @ chk
+    err.append(np.abs(a_[:2] / a_[2] - b_[:2] / b_[2]).max())
+print('motion fit residual px: max %.2f median %.2f' % (np.max(err), np.median(err)))
+
+
+# ---- clean sky mosaic in frame-0 coords (canvas with margin where the sky came from) ----
+c0 = np.concatenate([(lambda q: q / q[2])(np.linalg.inv(Ms[j]) @ np.array([[0, FW, 0, FW], [0, 0, FH, FH], [1, 1, 1, 1.0]]))
+                     for j in range(0, N, 10)] + [np.array([[0, FW, 0, FW], [0, 0, FH, FH], [1, 1, 1, 1.0]])], 1)
+OX = int(np.ceil(max(0, -c0[0].min()))) + 40; OY = int(np.ceil(max(0, -c0[1].min()))) + 40
+CW = int(np.ceil(max(FW, c0[0].max()))) + OX + 40; CH = int(np.ceil(max(FH, c0[1].max()))) + OY + 40
+Toff = np.array([[1, 0, OX], [0, 1, OY], [0, 0, 1.0]])
+acc = np.zeros((CH, CW), np.float32); cnt = np.zeros((CH, CW), np.float32)
+skyw = (1 - tree).astype(np.float32)
+edge = np.ones((FH, FW), np.float32); edge[:6] = edge[-6:] = 0; edge[:, :6] = edge[:, -6:] = 0
+for j in range(N):
+    Minv = Toff @ np.linalg.inv(Ms[j])                             # frame j -> canvas (actual registration)
+    acc += cv2.warpPerspective(G[j].astype(np.float32) * skyw * edge, Minv, (CW, CH), flags=cv2.INTER_LINEAR)
+    cnt += cv2.warpPerspective(skyw * edge, Minv, (CW, CH), flags=cv2.INTER_LINEAR)
+mos = acc / np.maximum(cnt, 1e-3); valid = cnt > 2.0
+fillv = np.median(mos[valid]); mos[~valid] = fillv
+print('mosaic', CW, CH, 'valid %.2f' % valid.mean())
+# glow (stars removed) and the star catalogue
+glow = cv2.GaussianBlur(cv2.medianBlur(np.clip(mos, 0, 255).astype(np.uint8), 7).astype(np.float32), (0, 0), 3)
+hp = mos - cv2.GaussianBlur(mos, (0, 0), 2.5)
+mx = cv2.dilate(hp, np.ones((7, 7), np.uint8))
+# noise-aware threshold: per-frame noise of the high-pass / sqrt(frames averaged at that spot)
+g2 = G[N // 2].astype(np.float32); h0 = g2 - cv2.GaussianBlur(g2, (0, 0), 2.5)
+sig0 = 1.4826 * np.median(np.abs(h0[tree < 0.1] - np.median(h0[tree < 0.1])))
+sigm = sig0 / np.sqrt(np.maximum(cnt, 1.0))
+KS = float(os.environ.get('STAR_SIG', '7'))
+TH = float(os.environ.get('STAR_TH', '6'))
+ys, xs = np.nonzero((hp == mx) & (hp > np.maximum(TH, KS * sigm)) & (cnt > 10))
+print('per-frame hp noise %.1f' % sig0)
+fl = hp[ys, xs]
+# sub-pixel centroid (3x3)
+sx = np.zeros(len(xs)); sy = np.zeros(len(xs)); sw = np.zeros(len(xs))
+for dy in (-1, 0, 1):
+    for dx in (-1, 0, 1):
+        w_ = np.clip(hp[np.clip(ys + dy, 0, CH - 1), np.clip(xs + dx, 0, CW - 1)], 0, None)
+        sx += w_ * dx; sy += w_ * dy; sw += w_
+SXc = xs + sx / np.maximum(sw, 1e-3) - OX; SYc = ys + sy / np.maximum(sw, 1e-3) - OY     # frame-0 coords
+print('stars in catalogue', len(fl), 'flux p50 %.1f p95 %.1f max %.1f' % tuple(np.percentile(fl, [50, 95, 100])))
+NS = len(fl)
+fn = np.clip((fl - TH) / (np.percentile(fl, 99.5) - TH), 0, 1)                # 0 faint .. 1 brightest
+rng = np.random.default_rng(2026)
+f1 = rng.uniform(0.18, 0.7, NS); p1 = rng.random(NS)                              # slow breathing
+f2 = rng.uniform(0.06, 0.32, NS); p2 = rng.random(NS)                             # sparse sharp flashes (own rhythm)
+f3 = rng.uniform(0.9, 2.2, NS); p3 = rng.random(NS)                               # fast shimmer during a flash
+flashy = rng.random(NS) < (0.25 + 0.5 * fn)
+cross = fn > np.percentile(fn, 96)
+tin = rng.uniform(0.0, 1.3, NS) * (1.0 - 0.4 * fn); tout = rng.uniform(0.0, 1.3, NS) * (1.0 - 0.4 * fn)
+ci = np.where(fn > 0.55, rng.uniform(238, 255, NS), np.where(fn > 0.2, rng.uniform(205, 240, NS), rng.uniform(150, 215, NS)))
+COL = DS.L.PAL[ci.astype(np.uint8)]
+TL = float(os.environ.get('CLIPLEN', N / SFPS))
+NO = int(round(TL * 25))
+S = W / FW                                                         # footage px -> design px
+tree_d = cv2.resize(tree, (W, H), interpolation=cv2.INTER_AREA)
+GLOWG = float(os.environ.get('GLOWG', '1.0'))
+# sheet luminance reference: glow + lit trees over the clip
+LREF = float(os.environ.get('LREF', '0'))
+wr = Writer(out, None, [])
+ST = {}
+sm = lambda x: x * x * (3 - 2 * x)
+for i in range(int(os.environ.get('START', '0')), NO):
+    t = i / 25.0
+    M = Mt(t)
+    # sheet: the glow warped into place + the footage's own trees (their light changes)
+    gm = cv2.warpPerspective(glow, M @ np.linalg.inv(Toff), (FW, FH), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_REPLICATE)
+    js = min(int(round(t * SFPS)), N - 1)
+    tl = cv2.GaussianBlur(G[js].astype(np.float32), (0, 0), 1.2)
+    lumf = gm * (1 - tree) + tl * tree
+    lumd = cv2.resize(lumf, (W, H), interpolation=cv2.INTER_AREA) / 255.0
+    if LREF <= 0:                                                 # fixed per clip: sky base -> black, Milky Way core -> GLOW_TOP
+        skyv = lumd[tree_d < 0.2]
+        FLOOR = np.percentile(skyv, float(os.environ.get('GLOW_FLOOR_P', '35')))
+        LREF = (np.percentile(skyv, 99.5) - FLOOR) / float(os.environ.get('GLOW_TOP', '0.5'))
+        print('glow floor %.3f lref %.3f' % (FLOOR, LREF))
+    lum = np.clip((lumd - FLOOR) / LREF, 0, 1.3) ** GLOWG
+    dep = (0.55 + 0.25 * tree_d).astype(np.float32)
+    # stars: smoothed sky motion, hidden behind the trees, own glisten
+    q = M @ np.stack([SXc, SYc, np.ones(NS)])
+    u = q[0] / q[2] * S; v = q[1] / q[2] * S
+    inside = (u > -20) & (u < W + 20) & (v > -20) & (v < H + 20)
+    occ = cv2.remap(tree_d, u.astype(np.float32).reshape(1, -1), v.astype(np.float32).reshape(1, -1), cv2.INTER_LINEAR,
+                    borderMode=cv2.BORDER_CONSTANT, borderValue=0)[0]
+    vis = np.clip(1 - occ * 1.3, 0, 1) * inside
+    a_ = np.clip((t - tin) / 0.6, 0, 1); b_ = np.clip((TL - 0.15 - t - tout) / 0.6, 0, 1)
+    vis = vis * sm(a_) * sm(b_)                                    # each star glistens on / off on its own
+    breathe = 0.62 + 0.38 * np.sin(np.pi * (f1 * t + p1)) ** 2
+    fl_ = np.maximum(np.sin(2 * np.pi * (f2 * t + p2)), 0) ** 40 * flashy
+    shim = 0.7 + 0.3 * np.sin(2 * np.pi * (f3 * t + p3))
+    base = (0.22 + 1.5 * fn ** 1.25)
+    w = base * breathe * (1 + 3.2 * fl_ * shim * (0.4 + 0.6 * fn)) * vis * float(os.environ.get('STAR_K', '1.0'))
+    U, V, C, Wt = [u], [v], [COL], [w]
+    # cross glints on the brightest while they flash (4 fading arms)
+    cm = cross & (fl_ > 0.05) & (vis > 0.05)
+    if cm.any():
+        k_ = np.nonzero(cm)[0]
+        Lr = (6 + 16 * fn[k_]) * fl_[k_]
+        for (ax, ay) in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            for s_ in np.linspace(0.15, 1.0, 7):
+                U.append(u[k_] + ax * s_ * Lr); V.append(v[k_] + ay * s_ * Lr)
+                C.append(DS.L.PAL[np.full(k_.size, 252)]); Wt.append(w[k_] * 0.16 * (1 - s_) ** 1.6)
+    keep = np.concatenate(Wt) > 1e-4
+    DS.EXTRA.update(u=np.concatenate(U)[keep], v=np.concatenate(V)[keep], w=np.concatenate(Wt)[keep],
+                    col=np.concatenate(C)[keep], z=DS.Z0 - DS.REL * 0.55)
+    wr.write(DS.render(dep, 1, t, None, None, None, ST, lum.astype(np.float32)))
+    if os.environ.get('ONE') and i >= int(os.environ['ONE']):
+        break
+wr.close()
+print('done', out)
