@@ -146,4 +146,4 @@ cp pipeline/land/landLoop.py . ; env $(cat land_loop_final.env) OUTS=3 python3 l
 - `rose3d.py rosa.obj rosa.jpg out.png [t]` — point-splat z-buffer of the mesh → picture + depth → `depth_sheet.render`.
   Z is the model's up axis (`R_UP=0,0,1`); turntable angle `R_YAW` (deg). Preset `presets/rose3d_sf.env` (yaw 190°).
 - Loop: `rose3d_loop.py rosa.obj rosa.jpg outdir f0 f1`, preset `presets/rose3d_loop.env` (T = 24 beats = 9.86 s,
-  one turn + 2 particle waves per loop, seamless). 2 s test = frames 20–69.
+  one turn + 2 particle waves per loop, seamless). Full loop = frames 0–245 (9.84 s, 24 beats; split 0–123 / 123–246 across 2 processes). 2 s test = frames 20–69.

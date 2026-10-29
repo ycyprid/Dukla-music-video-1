@@ -12,7 +12,10 @@ from common import W, H
 EV = lambda k, d: float(os.environ.get(k, d))
 objp, texp, od, f0, f1 = sys.argv[1], sys.argv[2], sys.argv[3], int(sys.argv[4]), int(sys.argv[5])
 os.makedirs(od, exist_ok=True)
-T = EV('R_T', str(24 * 60 / 146))                       # loop length (24 beats = 9.86 s)
+T = EV('R_T', '9.84')                                   # loop length: 246 frames = 24 beats (seamless at frame level)
+import common
+common.BEAT = T / 24                                     # beat pulse repeats exactly too
+os.environ.setdefault('LOOPQ', str(T))                   # glint rhythms: whole cycles per loop
 NW = EV('R_NW', '2')                                    # waves per loop
 FPS = 25
 z = np.load('/tmp/rosa_mesh.npz') if os.path.exists('/tmp/rosa_mesh.npz') else None
@@ -150,6 +153,15 @@ def frame(t):
         wv = (0.35 + 0.65 * lv) * np.sin(np.pi * np.clip(ek[fl], 0, 1)) ** 0.5 * EV('R_SPKW', '0.55') / K
         tw_ = 1 + 1.5 * np.maximum(np.sin(2 * np.pi * (3.0 * tk / T * 8 + q4[fl])), 0) ** 8
         U.append(uk[vis]); Vv.append(vk[vis]); Wt.append((wv * tw_)[vis]); Ci.append((150 + 105 * lv)[vis])
+    # seamless dust (replaces the renderer's free-drifting specks): slow closed orbits, whole-cycle twinkles
+    if 'dust' not in LREF:
+        g_ = np.random.default_rng(11); nd = 520
+        LREF['dust'] = (g_.uniform(0, W, nd), g_.uniform(0, H, nd), g_.uniform(4, 22, nd), g_.random(nd), g_.integers(1, 6, nd),
+                        g_.uniform(0.05, 0.5, nd) ** 1.5, g_.uniform(150, 215, nd))
+    du0, dv0, da, dph, dk, dw, dc = LREF['dust']
+    ph_ = 2 * np.pi * (t / T + dph)
+    U.append(du0 + da * np.cos(ph_)); Vv.append(dv0 + 0.6 * da * np.sin(ph_))
+    Wt.append(dw * EV('R_DUST', '0.35') * (0.5 + 0.5 * np.sin(2 * np.pi * dk * t / T + 6.28 * dph) ** 2)); Ci.append(dc)
     U, Vv, Wt, Ci = (np.concatenate(a_) for a_ in (U, Vv, Wt, Ci))
     DS.EXTRA.update(u=U, v=Vv, w=Wt, col=L.PAL[np.clip(Ci, 0, 255).astype(np.uint8)])
     img = DS.render(dep, 1, t, None, None, None, None, lum)
