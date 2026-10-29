@@ -140,3 +140,8 @@ cp pipeline/land/landLoop.py . ; env $(cat land_loop_final.env) OUTS=3 python3 l
 - Kiss silhouette (`9ff6734f-couple_fix_2.mp4`) in the dance look (`sil_bg3.py`).
 - 3D rose loop from `rosa.obj` (+ textures), 15 s, 4K — stretch goal.
 - Song section timecodes → shot list for the locked edit.
+
+## 17 · 3D rose (style frame stage) 🔶
+- Model: `rosa.obj` + `rosa.obj.mtl` + albedo texture `rosa.jpg` (the pink/green petal atlas; uploaded as an image).
+- `rose3d.py rosa.obj rosa.jpg out.png [t]` — point-splat z-buffer of the mesh → picture + depth → `depth_sheet.render`.
+  Z is the model's up axis (`R_UP=0,0,1`); turntable angle `R_YAW` (deg). Preset `presets/rose3d_sf.env` (yaw 190°).
