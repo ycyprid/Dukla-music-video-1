@@ -286,6 +286,17 @@ def hands_transition(t, u, v, mover, R):
     Lo = (150 + 330 * r6) * (0.7 + 0.5 * radn)                                  # a gentle spread, not an explosion
     curl = (40 + 90 * r4) * np.where(r5 > 0.5, 1.0, -1.0)
     key_o = 0.50 * (1 - radn) + 0.25 * (1 - streams) + 0.25 * r5               # outer parts peel off first
+    if T_.get('odir') is not None:                                               # directional exit (e.g. fire: up and away)
+        od_ = np.array(T_['odir'], float); od_ /= np.linalg.norm(od_)
+        a0 = np.arctan2(od_[1], od_[0]); ang = a0 + T_.get('oscat', 0.6) * (r3 - 0.5)
+        odx, ody = np.cos(ang), np.sin(ang)
+        ex_ = u * od_[0] + v * od_[1]                                            # distance to leave the frame that way
+        with np.errstate(divide='ignore', invalid='ignore'):
+            lxo = np.where(odx > 1e-6, (W + 60 - u) / odx, np.where(odx < -1e-6, (u + 60) / -odx, np.inf))
+            lyo = np.where(ody > 1e-6, (H + 60 - v) / ody, np.where(ody < -1e-6, (v + 60) / -ody, np.inf))
+        Lo = np.minimum(lxo, lyo) * (1.0 + 0.5 * r6) + 40
+        lead = np.clip((ex_ - ex_[mover].min()) / (np.ptp(ex_[mover]) + 1e-6), 0, 1) if mover.any() else np.zeros(n)
+        key_o = 0.62 * (1 - lead) + 0.23 * (1 - streams) + 0.15 * r5          # the leading side goes first
     dout = T_['out_dur'] * (0.75 + 0.5 * r2)
     tout = T_['out0'] + T_['out_spread'] * key_o
     def s_out(tt):

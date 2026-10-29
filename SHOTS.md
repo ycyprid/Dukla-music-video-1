@@ -149,3 +149,14 @@ cp pipeline/land/landLoop.py . ; env $(cat land_loop_final.env) OUTS=3 python3 l
   one turn + 2 particle waves per loop, seamless). Full loop = frames 0–245 (9.84 s, 24 beats; split 0–123 / 123–246 across 2 processes). 2 s test = frames 20–69.
 - v2 (2× rotation + orbiting comet streams): preset `presets/rose3d_loop2.env`; with transitions in/out:
   `presets/rose3d_trans.env` (frames 0–245, first/last frame black). Run each in ONE process (frames 0 246).
+
+## 18 · Ballerina 2 (test stage) 🔶
+- Source `82403cef-8462335-hd_2048_1080_25fps.mp4` (802 fr) → crop 1920:1080:64:0 → `out/bal2_1920.mp4`; depth as usual
+  (`depth_full2.py` + `depth_stab2.py` → `out/depth_bal2`). `bal2_prep.py` keys out the white wall (depth vs fitted wall
+  + colour edge) and relights her like ballerina 1 (black clothes → glowing garment, side key) → relit video on black;
+  then `depth_sheet_clip.py out/depth_bal2 <a> <n> out.mp4 relit.mp4 <-offset>` with `presets/bal2_preset.env`
+  (= dancer v6 + ORBIT_W 0.22). Test: frames 150–199 (B_SKIN=0.9).
+
+## 19 · Fire (test stage) 🔶
+- Source `9d8441a2-fire.mp4` (377 fr). `fire_clip.py src outdir f0 f1`, preset `presets/fire_preset.env`
+  (no depth model; embers from the flame top; TRANS=1 → in from below / out upwards via depth_sheet `odir`). Test: 100–149.
