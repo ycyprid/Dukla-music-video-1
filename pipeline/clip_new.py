@@ -46,10 +46,11 @@ if os.environ.get('TRANS'):                      # surface transition (water): i
                              in0=0.0, in_spread=isp * BT, in_dur=idu * BT,
                              out0=TL - (osp * BT + float(os.environ.get('OUTK', '1.0')) * odu * BT) - float(os.environ.get('OUTPAD', '0.25')),
                              out_spread=osp * BT, out_dur=odu * BT, ocx=ocx, ocy=ocy))
-    elif os.environ.get('SOFT'):                     # ripple-paced: long sweep, gentle flights (16 beats in, 16 out)
+    elif os.environ.get('SOFT'):
+        SK_ = float(os.environ.get('SOFT_K', '1'))       # shorter shots: both transitions scaled                     # ripple-paced: long sweep, gentle flights (16 beats in, 16 out)
         DS.TRANS.update(dict(mode='flow', kind='surface', soft=True, fdir=(fdx, fdy), ripple_wl=320.0, ripple_v=83.0,
-                             in0=0.0, in_spread=5.5 * BT, in_dur=4.5 * BT,
-                             out0=TL - 4.4, out_spread=5.5 * BT, out_dur=4.5 * BT))
+                             in0=0.0, in_spread=5.5 * BT * SK_, in_dur=4.5 * BT * SK_,
+                             out0=TL - 4.4 * SK_, out_spread=5.5 * BT * SK_, out_dur=4.5 * BT * SK_))
     else:
         DS.TRANS.update(dict(mode='flow', kind='surface', fdir=(fdx, fdy),
                              in0=0.0, in_spread=2.2 * BT, in_dur=1.9 * BT,
@@ -130,6 +131,8 @@ for i in range(n):
         al = np.clip((dist - c0) / (c1 - c0), 0, 1); al = al * al * (3 - 2 * al)
         near_ = cv2.GaussianBlur(cv2.dilate(mm, np.ones((21, 21), np.uint8)), (0, 0), 4)
         mm = al * np.clip(near_, 0, 1)
+        if os.environ.get('MATTE_DIR'):              # precomputed temporally consistent matte (blossom_matte.py)
+            mm = cv2.imread(f"{os.environ['MATTE_DIR']}/m{a + i:04d}.png", 0).astype(np.float32) / 255
         sel = mm > 0.5
         ref = np.percentile(g[sel], float(os.environ.get('DS_REFP', '80'))) if sel.sum() > 100 else SK.get('ref', 0.6)
         if 'ref' in SK:

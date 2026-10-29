@@ -163,3 +163,16 @@ cp pipeline/land/landLoop.py . ; env $(cat land_loop_final.env) OUTS=3 python3 l
 - Fire full: `env $(cat fire_full.env) python3 fire_clip.py <src> out/fire_full 0 377` (one process).
 - Ballerina 2 full (source 4–19 s): `B_SKIN=0.9 python3 bal2_prep.py out/bal2_1920.mp4 out/depth_bal2 out/bal2_relit_100.mp4 100 475`,
   then `env $(cat bal2_full.env) STILL=out/bal2_full/bal2 python3 depth_sheet_clip.py out/depth_bal2 100 375 x.mp4 out/bal2_relit_100.mp4 -100`.
+
+## Edit v1_1 fixes (30 Oct)
+- **Blossom v2**: `blossom_matte.py <footage> out/depth_blossom 337 out/blossom_matte` (flow-aligned temporal median of
+  the matte + in-focus gate + hole restore), then `clip_new.py ... depthsubj` with `MATTE_DIR=out/blossom_matte`.
+- **Landscape wobble (cut 0:33)**: `landLoop_wob.py` (= landLoop + WOB_T0/WOB_A/WOB_S ramp, ONLY=, NO_IN, OUT_MIN),
+  `env $(cat land_wob.env) LOOPMODE=trans WOB_T0=6.62 python3 landLoop_wob.py out/land_wob 150 375` → replaces the
+  2nd pass of `landscape_loop15_transitions` from its frame 150 (cut 32.48 s).
+- **Curtains wobble (cut 1:57)**: `... LOOPMODE=trans WOB_T0=12.2 NO_IN=1 OUT_MIN=15 ... out/curt_wob 305 750`
+  (continuous: loop frame 305 = cut 117.0 s → end of the out-transition, cut 134.8 s).
+- **3D rose**: both presets now pin `RIMS` (rim scale); the transitions version had been calibrated on its black
+  first frame → ~6 % brighter dots.
+- **Ripples 7.5 s**: `clip_new.py out/water_footage_25fps_1920.mp4 out/depth_water 0 188 water` with water preset +
+  `CLIPLEN=7.52 SOFT_K=0.55`.
