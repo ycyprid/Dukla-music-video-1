@@ -55,6 +55,9 @@ for i in range(n):
     border = np.unique(np.concatenate([lab_[0], lab_[-1], lab_[:, 0], lab_[:, -1]]))
     holes = np.isin(lab_, [k for k in range(1, nc_) if st_[k, cv2.CC_STAT_AREA] < EV('MT_HOLE', '4000') and k not in border])
     h = np.where(holes, np.maximum(h, np.clip((m0 - 0.35) / 0.3, 0, 1)), h)
+    OPK = int(EV('MT_OPEN', '0'))
+    if OPK > 0:                                   # structures thinner than the dot spacing alias into flicker: drop them
+        h = cv2.morphologyEx(h.astype(np.float32), cv2.MORPH_OPEN, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (OPK, OPK)))
     RAW[i] = (h * 255 + 0.5).astype(np.uint8)
 print('raw mattes done', flush=True)
 # ---- flow-aligned temporal median ----

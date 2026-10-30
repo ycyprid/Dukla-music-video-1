@@ -176,3 +176,9 @@ cp pipeline/land/landLoop.py . ; env $(cat land_loop_final.env) OUTS=3 python3 l
   first frame → ~6 % brighter dots.
 - **Ripples 7.5 s**: `clip_new.py out/water_footage_25fps_1920.mp4 out/depth_water 0 188 water` with water preset +
   `CLIPLEN=7.52 SOFT_K=0.55`.
+- **Blossom v3 (final)**: the old footage had been made with ffmpeg minterpolate (336 unique frames at 24.8 fps →
+  25 fps), which warped / smeared petals and caused stutter. Now: source `d9b9682d-7437640-uhd_4096_1974_30fps.mp4`,
+  centre-crop 16:9, held frames dropped, the 336 unique frames played 1:1 at 25 fps (+1 hold at the end),
+  irregular first 7 frames rebuilt from frame 7 (flow extrapolation) → `out/blossom_footage_v2.mp4` (+1280 copy for depth).
+  New depth `out/depth_blossom2`; matte `MT_OPEN=3 MT_R=3 blossom_matte.py ... out/blossom_matte3`;
+  render `clip_new.py out/blossom_footage_v2.mp4 out/depth_blossom2 0 337 depthsubj` with `MATTE_DIR=out/blossom_matte3`.
