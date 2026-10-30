@@ -220,3 +220,8 @@ cp pipeline/land/landLoop.py . ; env $(cat land_loop_final.env) OUTS=3 python3 l
 - `9ff6734f-couple_fix_2.mp4` (208 fr), test = frames 150–199 (6.0–8.0 s: leaning in → kiss).
 - `env $(cat presets/dance_full.env) FOOT_CROP=230,0,1500 CLIPLEN=100 python3 motion_sil3.py $A/9ff6734f-couple_fix_2.mp4 0 208 out/kiss_test 150 175`
   (+ `175 200` in parallel). CLIPLEN=100 = no transitions in the test.
+
+## 6b · Dancer v7 (more detail, brighter) — replaces v6
+- Same source/depth/transitions as v6 (`TRANS=1 CLIPLEN=15 T0ABS=1`, default swirl; verified frame-for-frame vs v6).
+- Skin lift on the footage: lutrgb `255*pow(max(val/255-0.03,0)/0.97,0.6)` → `depthjobs/dancer_g.mp4`.
+- `env $(cat dancer_preset_v6.env) TRANS=1 CLIPLEN=15 T0ABS=1 PITCH=3.6 GAIN=1.5 OUTS=1.5 RANGE=0,188 | 188,375 STILL=out/dancer_v7/dancer python3 depth_sheet_clip.py out/depth_dancer_v3 0 375 x.mp4 depthjobs/dancer_g.mp4 0`
