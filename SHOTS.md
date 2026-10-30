@@ -191,3 +191,10 @@ cp pipeline/land/landLoop.py . ; env $(cat land_loop_final.env) OUTS=3 python3 l
 - **Fire v2 (4 s 20 f)**: `env $(cat presets/fire_v2.env) python3 fire_clip.py <src> out/fire_v2 0 120` — GAIN 1.7,
   `HOTW=0.72,0.85` (new depth_sheet option: brightest dots blend to white-silver), `FIRE_TL=4.8` moves the out-transition
   to start at 2.6 s.
+
+## 20 · Hands silhouette + Ballerina 3 (test stage) 🔶
+- Tests = source 4–6 s (`ffmpeg -ss 4 -frames:v 50`; ballerina 3 = `23c9e9be-8462217` centre-cropped 2048→1920).
+  Depth: `depth_full2.py … 1280 720` + `depth_stab2.py … 3 0.035 0.06 1280 720` → `out/depth_hsil_t`, `out/depth_bal3_t`.
+- Hands (`6bb37458-5823524`, dark on bright sky): `S_R=70 python3 sil_prep.py src out_relit.mp4` (sky fit → matte,
+  rounded relief + side key + rim, on black), then both: `env $(cat dancer_preset_v6.env) OUTS=1.5 STILL=… python3
+  depth_sheet_clip.py <depth> 0 50 x.mp4 <relit | footage> 0`.
