@@ -657,7 +657,7 @@ def render(dep, seed=1, t=0.0, pts=None, vis=None, ids=None, state=None, lum=Non
         dep = np.clip((dep - FL) / (1 - FL), 0, 1)
     if GAMMA != 1:
         dep = dep ** GAMMA
-    p = soft_pulse(t)
+    p = soft_pulse(t) * float(os.environ.get('PULSEK', '1'))      # 0: no beat pulse (full-frame sheets)
     rng = np.random.default_rng(seed)
     # lighting from the relief
     ds = cv2.GaussianBlur(dep, (0, 0), 2.5)

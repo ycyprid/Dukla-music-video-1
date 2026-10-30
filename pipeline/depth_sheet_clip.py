@@ -35,6 +35,8 @@ for j in range(0, n, 5):
         x = x * matte(gray[j])
     smp.append(cv2.resize(x, (320, 180)))
 lohi = (np.median([np.percentile(x, 2) for x in smp]), np.median([np.percentile(x, 99.7) for x in smp]))
+if os.environ.get('DLOHI'):                      # fixed depth range (synthetic / flat depth)
+    lohi = tuple(float(x_) for x_ in os.environ['DLOHI'].split(','))
 LEVEL = None
 if MT == 'depth':
     # one level per frame (her figure's 95th percentile), smoothed over time -> no pumping, no trails

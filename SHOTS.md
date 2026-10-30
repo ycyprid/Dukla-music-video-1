@@ -198,3 +198,7 @@ cp pipeline/land/landLoop.py . ; env $(cat land_loop_final.env) OUTS=3 python3 l
 - Hands (`6bb37458-5823524`, dark on bright sky): `S_R=70 python3 sil_prep.py src out_relit.mp4` (sky fit → matte,
   rounded relief + side key + rim, on black), then both: `env $(cat dancer_preset_v6.env) OUTS=1.5 STILL=… python3
   depth_sheet_clip.py <depth> 0 50 x.mp4 <relit | footage> 0`.
+- **Hands v2 (black hands, true to footage)**: no relight, no depth model (it snapped on the silhouette): flat synthetic
+  depth `out/depth_hflat` (constant 0.5, 50 PNGs) + `env $(cat dancer_preset_v6.env) MATTE= TILT=0 YAW=0
+  DARKCUT=0.28,0.45 DLOHI=0,1 FIT=cover PULSEK=0 OUTS=1.5 STILL=… python3 depth_sheet_clip.py out/depth_hflat 0 50 x.mp4 depthjobs/hsil_t.mp4 0`.
+  New options: `DLOHI` (fixed depth range), `PULSEK` (beat pulse strength; 0 = off — the pulse pumped the full-frame sheet).
