@@ -202,3 +202,10 @@ cp pipeline/land/landLoop.py . ; env $(cat land_loop_final.env) OUTS=3 python3 l
   depth `out/depth_hflat` (constant 0.5, 50 PNGs) + `env $(cat dancer_preset_v6.env) MATTE= TILT=0 YAW=0
   DARKCUT=0.28,0.45 DLOHI=0,1 FIT=cover PULSEK=0 OUTS=1.5 STILL=… python3 depth_sheet_clip.py out/depth_hflat 0 50 x.mp4 depthjobs/hsil_t.mp4 0`.
   New options: `DLOHI` (fixed depth range), `PULSEK` (beat pulse strength; 0 = off — the pulse pumped the full-frame sheet).
+
+## 21 · Ballerina fix (`ef68eb02-ballerina_fix.mp4`, 377 fr) — 3 s test
+- Test = clip 2.8–6.2 s (`ffmpeg -ss 2.8 -frames:v 85` → `depthjobs/balf_t.mp4`), render frames 5–79 (= 3.0–6.0 s).
+- Depth at 1920: `depth_full2.py … 85 0 1920 1080` + `depth_stab2.py … 3 0.035 0.06 1920 1080` → `out/depth_balf_t`.
+- Skin lift (footage only, depth from the ungraded clip): `lutrgb` each channel `255*pow(max(val/255-0.03,0)/0.97,0.6)` → `depthjobs/balf_g0.6.mp4`.
+- `env $(cat dancer_preset_v6.env) PITCH=4.2 OUTS=1.5 RANGE=5,43 | 43,80 STILL=out/balf_test/balf python3 depth_sheet_clip.py out/depth_balf_t 0 85 x.mp4 depthjobs/balf_g0.6.mp4 0`
+  (PITCH 6 → 4.2: ~9 → ~13 dots across the face; 4K: OUTS=3).
