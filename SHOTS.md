@@ -260,3 +260,6 @@ cp pipeline/land/landLoop.py . ; env $(cat land_loop_final.env) OUTS=3 python3 l
   Warp: `PITCH=3.6 DARKCUT=0.04,0.12 GAIN=0.6 LUMSCALE=0.45 TWK=2.5 HALO=0.3 IN_RADIAL=640,373 OCXY=640,373 CLIPLEN=12 LUMDEP=0.03,0.10` (RANGE 0,150 | 150,300).
   New: `IN_RADIAL=x,y` (hands mode: burst in from a point, inner first), `OCXY` (fixed dispersal centre), `LUMDEP=t0,t1`
   (flat plates: only lit dots fly / host sparks, via depth_sheet `MOVERMAP`; the look is unchanged).
+- **Warp source fix**: `12491717` is 25 fps content with every 6th frame duplicated (300 → 250 unique). Plate rebuilt from the
+  unique frames (drop frames whose diff to the previous < 0.25×median) → `depthjobs/warp_full.mp4` (250 fr, real time), then
+  warp_prep; render with `CLIPLEN=10`, 0 250, RANGE 0,125 | 125,250. (Birds source checked: no duplicates.)
