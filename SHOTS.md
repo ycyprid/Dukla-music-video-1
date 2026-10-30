@@ -282,3 +282,6 @@ cp pipeline/land/landLoop.py . ; env $(cat land_loop_final.env) OUTS=3 python3 l
   `R_LREF=0.85` → loop and transition copy are pixel-identical outside the transitions (verified frame 250: diff 0).
   Transition copy: `R_TRANS=1` (same command) → in = twins spiral up from below, stem first (blossom timing: TRANS_IN 2.6,2.4
   beats → formed by ~2.3 s), out = peel off + spiral up (TRANS_OUT 2.2,2.6 → from ~17.3 s, black by ~19.6 s); streams + dust fade with it.
+- **Black point**: the renderer leaves a ~1.8 % deep-red floor (empty sheet glow, max ≈1217/65535). Both rose sequences get
+  `python3 pipeline/blackpoint.py <dir> 1250` (same value for both → still pixel-identical outside the transitions; transition
+  copy starts/ends at exactly 0). Do the same on the final-resolution renders (or set the floor off at the source).
