@@ -129,7 +129,7 @@ for i, f in enumerate(fs):
         else:
             dep = dep * matte(gray[i])
         dep = np.clip((dep - lohi[0]) / (lohi[1] - lohi[0] + 1e-6), 0, 1)
-    lm = (lumf[i].astype(np.float32) / LREF) if USELUM else None
+    lm = (lumf[i].astype(np.float32) / LREF * float(os.environ.get('LUMSCALE', '1'))) if USELUM else None   # <1: dimmer + warmer (overlays)
     if os.environ.get('ORBIT'):
         DS.ORBIT['cx'] = float(CXS[i]); DS.ORBIT['cy'] = float(CYS[i]) * 0.5 + H * 0.25
         if os.environ.get('FIT'):                  # orbit / swirl axis in the fitted screen frame too

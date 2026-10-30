@@ -225,3 +225,10 @@ cp pipeline/land/landLoop.py . ; env $(cat land_loop_final.env) OUTS=3 python3 l
 - Same source/depth/transitions as v6 (`TRANS=1 CLIPLEN=15 T0ABS=1`, default swirl; verified frame-for-frame vs v6).
 - Skin lift on the footage: lutrgb `255*pow(max(val/255-0.03,0)/0.97,0.75)` → `depthjobs/dancer_g75.mp4` (0.6 + GAIN 1.5 blew the dress out).
 - `env $(cat dancer_preset_v6.env) TRANS=1 CLIPLEN=15 T0ABS=1 PITCH=3.6 GAIN=1.0 OUTS=1.5 RANGE=0,188 | 188,375 STILL=out/dancer_v7/dancer python3 depth_sheet_clip.py out/depth_dancer_v3 0 375 x.mp4 depthjobs/dancer_g75.mp4 0`
+
+## 23 · Reflections overlays (bokeh) — 2 s tests
+- `38a55e86-reflections.mp4` (94 fr, test 0.8–2.8 s) and `66d8c8f1-reflections2.mp4` (290 fr, test 4–6 s), trimmed to `depthjobs/refl{1,2}_t.mp4`.
+- Flat depth `out/depth_hflat`; `env $(cat dancer_preset_v6.env) ORBIT= MATTE= TILT=0 YAW=0 DLOHI=0,1 PULSEK=0 NOSPECKS=1 THIN=
+  OUTS=1.5 FIT=cover DARKCUT=0.04,0.12` + refl1 `LUMSCALE=0.7 GAIN=0.9 TWK=4`, refl2 `LUMSCALE=0.8 GAIN=1.2 TWK=3`.
+  New `LUMSCALE` (depth_sheet_clip): scales the footage light → dimmer + warmer (overlays).
+- Transitions still to build (refs): refl1 in from top-right moving down-left, out down-left; refl2 in from the right, out to the left.
