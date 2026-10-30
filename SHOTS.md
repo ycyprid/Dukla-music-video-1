@@ -252,3 +252,4 @@ cp pipeline/land/landLoop.py . ; env $(cat land_loop_final.env) OUTS=3 python3 l
 - **Warp v2 (overlay, softer)**: `warp_prep.py depthjobs/warp_t.mp4 depthjobs/warp_tv.mp4` (floor cut 0.075 + curve 1.15, then a
   per-ray brightness field: angle noise around the vanishing point 960,560, skewed W_GP=2.2 so most streaks are dim; core
   quieter), render `PITCH=3.6 DARKCUT=0.05,0.14 GAIN=0.9 LUMSCALE=0.6 TWK=3`.
+- **Warp v3 (fainter)**: same plate, `DARKCUT=0.04,0.12 GAIN=0.6 LUMSCALE=0.45 TWK=2.5 HALO=0.3`.
