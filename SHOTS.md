@@ -182,3 +182,9 @@ cp pipeline/land/landLoop.py . ; env $(cat land_loop_final.env) OUTS=3 python3 l
   irregular first 7 frames rebuilt from frame 7 (flow extrapolation) → `out/blossom_footage_v2.mp4` (+1280 copy for depth).
   New depth `out/depth_blossom2`; matte `MT_OPEN=3 MT_R=3 blossom_matte.py ... out/blossom_matte3`;
   render `clip_new.py out/blossom_footage_v2.mp4 out/depth_blossom2 0 337 depthsubj` with `MATTE_DIR=out/blossom_matte3`.
+- **Blossom v4 (current)**: pops in v3 came from hard per-frame matte decisions (hole fill, focus gate, thresholds).
+  `blossom_matte.py` now ends with a bidirectional flow-guided recursive average (MT_A=0.82, fwd/bwd consistency trust)
+  + soft threshold → pops become fades. `MT_OPEN=3 python3 blossom_matte.py out/blossom_footage_v2.mp4 out/depth_blossom2 337 out/blossom_matte4`
+  (matte pop area 24,066 → 135 px). Depth smoothed the same way: `python3 depth_tfilter.py ... out/depth_blossom2s` (A=0.75).
+  Render: `env $(cat presets/blossom_preset_trans.env) MATTE_DIR=out/blossom_matte4 PNGDIR=out/blossom_v4 PNGNAME=blossom
+  python3 clip_new.py out/blossom_footage_v2.mp4 out/depth_blossom2s 0 337 depthsubj x.mp4`

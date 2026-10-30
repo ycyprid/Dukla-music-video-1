@@ -53,43 +53,54 @@ for i in range(n):
     inv = 1 - hb
     nc_, lab_, st_, _ = cv2.connectedComponentsWithStats(inv, 4)
     border = np.unique(np.concatenate([lab_[0], lab_[-1], lab_[:, 0], lab_[:, -1]]))
-    holes = np.isin(lab_, [k for k in range(1, nc_) if st_[k, cv2.CC_STAT_AREA] < EV('MT_HOLE', '4000') and k not in border])
-    h = np.where(holes, np.maximum(h, np.clip((m0 - 0.35) / 0.3, 0, 1)), h)
+    HA = EV('MT_HOLE', '4000')
+    hw_ = np.zeros(nc_, np.float32)
+    for k in range(1, nc_):
+        if k not in border:
+            hw_[k] = np.clip((HA * 1.5 - st_[k, cv2.CC_STAT_AREA]) / HA, 0, 1)     # fills fade out with hole size
+    hwm = hw_[lab_]
+    h = np.maximum(h, hwm * np.clip((m0 - 0.35) / 0.3, 0, 1))
     OPK = int(EV('MT_OPEN', '0'))
     if OPK > 0:                                   # structures thinner than the dot spacing alias into flicker: drop them
         h = cv2.morphologyEx(h.astype(np.float32), cv2.MORPH_OPEN, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (OPK, OPK)))
     RAW[i] = (h * 255 + 0.5).astype(np.uint8)
 print('raw mattes done', flush=True)
-# ---- flow-aligned temporal median ----
+# ---- temporal filter along the motion: bidirectional recursive average (forward + backward pass), each step warped
+#      with optical flow and trusted only where forward/backward flow agree. A blossom that the per-frame matte
+#      switches on/off for a few frames becomes a gentle fade (or vanishes), never a pop.
 dis = cv2.DISOpticalFlow_create(cv2.DISOPTICAL_FLOW_PRESET_MEDIUM)
 SW_, SH_ = 640, 360
 small = [cv2.resize(g, (SW_, SH_), interpolation=cv2.INTER_AREA) for g in gs]
+gxs, gys = np.meshgrid(np.arange(SW_, dtype=np.float32), np.arange(SH_, dtype=np.float32))
 gx, gy = np.meshgrid(np.arange(W, dtype=np.float32), np.arange(H, dtype=np.float32))
+A = EV('MT_A', '0.82')
+def flowpair(i, j):
+    f = dis.calc(small[i], small[j], None); b = dis.calc(small[j], small[i], None)
+    bx = cv2.remap(b[..., 0], gxs + f[..., 0], gys + f[..., 1], cv2.INTER_LINEAR); by = cv2.remap(b[..., 1], gxs + f[..., 0], gys + f[..., 1], cv2.INTER_LINEAR)
+    err = np.hypot(f[..., 0] + bx, f[..., 1] + by)
+    trust = np.clip(1.5 - err, 0, 1)                                    # >1.5 px disagreement: occlusion / unreliable
+    return cv2.resize(f, (W, H)) * (W / SW_), cv2.resize(trust, (W, H))
+def run(order):
+    out = {}; prev = None; pi = None
+    for i in order:
+        r = RAW[i].astype(np.float32) / 255
+        if prev is None:
+            cur = r
+        else:
+            fl, tr = flowpair(i, pi)
+            w = cv2.remap(prev, gx + fl[..., 0], gy + fl[..., 1], cv2.INTER_LINEAR, borderMode=cv2.BORDER_REPLICATE)
+            a = A * tr
+            cur = a * w + (1 - a) * r
+        out[i] = cur; prev = cur; pi = i
+    return out
+Fw = run(range(n)); print('forward done', flush=True)
+Bw = run(range(n - 1, -1, -1)); print('backward done', flush=True)
 flick = []
 for i in range(n):
-    stack = []; ws = []
-    for j in range(max(0, i - R), min(n, i + R + 1)):
-        if j == i:
-            stack.append(RAW[i].astype(np.float32)); continue
-        fl = dis.calc(small[i], small[j], None)                       # where pixel of i is in j
-        fl = cv2.resize(fl, (W, H)) * (W / SW_)
-        stack.append(cv2.remap(RAW[j].astype(np.float32), gx + fl[..., 0], gy + fl[..., 1], cv2.INTER_LINEAR, borderMode=cv2.BORDER_REPLICATE))
-    st = np.stack(stack)
-    med = np.median(st, 0)
-    if len(stack) < 2 * R + 1:                                          # clip ends: fewer neighbours, keep the median
-        pass
-    m = med / 255
-    m = cv2.GaussianBlur(m, (0, 0), 0.8)                                   # anti-aliased edge
-    # drop small islands (depth blobs, sky speckle): keep components with enough area
-    b = (m > 0.5).astype(np.uint8)
-    nc, lab, sts, _ = cv2.connectedComponentsWithStats(b, 8)
-    small_ = np.isin(lab, [k for k in range(1, nc) if sts[k, cv2.CC_STAT_AREA] < EV('MT_MINA', '60')])
-    m = np.where(small_, 0, m)
-    flick.append(float(np.abs(m - RAW[i] / 255.0).mean()))
+    r = RAW[i].astype(np.float32) / 255
+    S = (Fw[i] + Bw[i] - (1 - A) * r) / (1 + A)                          # both directions (raw counted once)
+    m = np.clip((S - 0.30) / 0.40, 0, 1); m = m * m * (3 - 2 * m)          # soft threshold: changes fade over frames
+    m = cv2.GaussianBlur(m, (0, 0), 0.8)
+    flick.append(float(np.abs(m - r).mean()))
     cv2.imwrite(f'{od}/m{i:04d}.png', (np.clip(m, 0, 1) * 255 + 0.5).astype(np.uint8))
-    if i % 50 == 0:
-        print('filtered', i, flush=True)
-fl_ = np.array(flick)
-top = np.argsort(fl_)[::-1][:15]
-print('most-changed frames (raw vs filtered):', ', '.join('%d:%.4f' % (k, fl_[k]) for k in sorted(top)))
-np.save(f'{od}/change.npy', fl_)
+np.save(f'{od}/change.npy', np.array(flick)); print('done', flush=True)
