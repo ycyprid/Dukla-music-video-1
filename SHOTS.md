@@ -253,3 +253,10 @@ cp pipeline/land/landLoop.py . ; env $(cat land_loop_final.env) OUTS=3 python3 l
   per-ray brightness field: angle noise around the vanishing point 960,560, skewed W_GP=2.2 so most streaks are dim; core
   quieter), render `PITCH=3.6 DARKCUT=0.05,0.14 GAIN=0.9 LUMSCALE=0.6 TWK=3`.
 - **Warp v3 (fainter)**: same plate, `DARKCUT=0.04,0.12 GAIN=0.6 LUMSCALE=0.45 TWK=2.5 HALO=0.3`.
+- **Birds + warp full runs**: plates `birds_prep.py <src> depthjobs/birds_full.mp4` (240 fr) and
+  `ffmpeg -vf setpts=N/25/TB -r 25` → `warp_prep.py depthjobs/warp_full.mp4 depthjobs/warp_fv.mp4` (300 fr); flat depth 300 fr.
+  Common: `… FIT=cover TRANS=1 TRANS_MODE=hands IN_XMIN=0 T0ABS=1 OUTK=1.0 OUTPAD=0.25 TRANS_IN=2.6,2.4 TRANS_OUT=2.2,2.6 OUTS=1.5`.
+  Birds: `DARKCUT=0.04,0.12 PITCH=3.0 GAIN=1.4 TWK=3 FLOW_DIR=-1,0 ODIR=-1,0 CLIPLEN=9.6 LUMDEP=0.05,0.2` (RANGE 0,120 | 120,240).
+  Warp: `PITCH=3.6 DARKCUT=0.04,0.12 GAIN=0.6 LUMSCALE=0.45 TWK=2.5 HALO=0.3 IN_RADIAL=640,373 OCXY=640,373 CLIPLEN=12 LUMDEP=0.03,0.10` (RANGE 0,150 | 150,300).
+  New: `IN_RADIAL=x,y` (hands mode: burst in from a point, inner first), `OCXY` (fixed dispersal centre), `LUMDEP=t0,t1`
+  (flat plates: only lit dots fly / host sparks, via depth_sheet `MOVERMAP`; the look is unchanged).

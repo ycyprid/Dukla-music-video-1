@@ -130,6 +130,11 @@ for i, f in enumerate(fs):
             dep = dep * matte(gray[i])
         dep = np.clip((dep - lohi[0]) / (lohi[1] - lohi[0] + 1e-6), 0, 1)
     lm = (lumf[i].astype(np.float32) / LREF * float(os.environ.get('LUMSCALE', '1'))) if USELUM else None   # <1: dimmer + warmer (overlays)
+    if os.environ.get('LUMDEP'):                  # flat plates: only the lit parts are 'subject' (fly in transitions, host sparks)
+        l0_, l1_ = (float(x_) for x_ in os.environ['LUMDEP'].split(','))
+        lq_ = cv2.GaussianBlur(lumf[i].astype(np.float32) / LREF, (0, 0), 2.0)
+        lq_ = np.clip((lq_ - l0_) / (l1_ - l0_), 0, 1)
+        DS.MOVERMAP['m'] = cv2.dilate(lq_, np.ones((5, 5), np.uint8)).astype(np.float32)   # look unchanged; only the movers
     if os.environ.get('ORBIT'):
         DS.ORBIT['cx'] = float(CXS[i]); DS.ORBIT['cy'] = float(CYS[i]) * 0.5 + H * 0.25
         if os.environ.get('FIT'):                  # orbit / swirl axis in the fitted screen frame too
@@ -158,6 +163,11 @@ for i, f in enumerate(fs):
                                  in0=0.0, in_spread=isp * BT, in_dur=idu * BT,
                                  out0=TL - (osp * BT + float(os.environ.get('OUTK', '1.25')) * odu * BT) - float(os.environ.get('OUTPAD', '0.15')), out_spread=osp * BT, out_dur=odu * BT,
                                  ocx=float(np.ravel(ocx)[0]), ocy=float(np.ravel(ocy)[0])))
+            if os.environ.get('IN_RADIAL'):            # radial burst in from a centre point (design px)
+                icx_, icy_ = (float(x_) for x_ in os.environ['IN_RADIAL'].split(','))
+                DS.TRANS.update(dict(in_radial=True, icx=icx_, icy=icy_))
+            if os.environ.get('OCXY'):                 # fixed dispersal centre (design px)
+                DS.TRANS['ocx'], DS.TRANS['ocy'] = (float(x_) for x_ in os.environ['OCXY'].split(','))
             if os.environ.get('ODIR') and os.environ.get('TRANS_MODE') == 'hands':   # directional exit
                 DS.TRANS.update(dict(odir=tuple(float(x_) for x_ in os.environ['ODIR'].split(',')), oscat=float(os.environ.get('OSCAT', '0.5'))))
             if os.environ.get('TRANS_MODE') == 'arc':

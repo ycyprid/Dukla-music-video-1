@@ -264,6 +264,11 @@ def hands_transition(t, u, v, mover, R):
         xk = np.clip(1 - (e_ - cs_.min()) / (np.ptp(cs_) + 1e-6), 0, 1)
     streams = 0.5 + 0.5 * np.sin(v / 61.0 + 1.7 * np.sin(u / 133.0)) * np.sin(u / 89.0 + 0.7)
     key = 0.62 * xk + 0.23 * streams + 0.15 * r1
+    RADIN = T_.get('in_radial')
+    if RADIN:                                                    # burst: born at the vanishing point, inner dots land first
+        icx, icy = T_.get('icx', W / 2), T_.get('icy', H / 2)
+        rin = np.hypot(u - icx, v - icy); rinn = np.clip(rin / (np.percentile(rin, 97) + 1e-6), 0, 1)
+        key = 0.62 * rinn + 0.23 * streams + 0.15 * r1
     din = T_['in_dur'] * (0.8 + 0.4 * r2)
     tin = T_['in0'] + T_['in_spread'] * key
     m = 90.0
@@ -306,6 +311,10 @@ def hands_transition(t, u, v, mover, R):
         bend = A * np.sin(np.pi * sc) * (1 - 0.35 * sc) + 8 * np.sin(2 * np.pi * (1.3 * tt + r5)) * 4 * sc * (1 - sc)
         x = u - fd[0] * Ld * e + pd[0] * bend
         y = v - fd[1] * Ld * e + pd[1] * bend
+        if RADIN:
+            ang_ = np.arctan2(v - icy, u - icx) + 0.25 * (r4 - 0.5) * sc         # a slight twist on the way out
+            rr_ = rin * (1 - 0.97 * e)
+            x = icx + rr_ * np.cos(ang_); y = icy + rr_ * np.sin(ang_)
         so = s_out(tt)
         cb = curl * np.sin(np.pi * 0.5 * so) * so
         xo = u + odx * Lo * so - ody * cb
@@ -319,6 +328,8 @@ def hands_transition(t, u, v, mover, R):
     x, y, sf, z = smp[K // 2]
     si_ = np.clip(s_in(t), 0, 1); so_ = s_out(t)
     vin = np.clip((1 - si_) / 0.06, 0, 1) * (1 + 0.5 * si_)                     # lit for the whole flight (from off-screen)
+    if RADIN:
+        vin = np.clip((1 - si_) / 0.45, 0, 1) ** 1.5                            # materialise as they leave the centre
     vo = np.clip((1 - so_) / 0.65, 0, 1); vo = vo * vo * (3 - 2 * vo)           # fades in mid-air on the way out
     life = 0.35 + 0.65 * r1                                                       # the cloud thins as it spreads:
     vth = np.clip((life - so_) / 0.2, 0, 1)                                      # each particle winks out at its own point
@@ -522,6 +533,9 @@ def _xdraw(rng, rng2, n, fn, *a):
     return np.concatenate([getattr(rng, fn)(*a, nb), getattr(rng2, fn)(*a, n - nb)])
 
 
+MOVERMAP = {}                                  # optional image: which dots fly in transitions (flat plates)
+
+
 def sheet_transition(t, u, v, p_, ids=None):
     nb = NBASE.get('n')
     if nb and u.size > nb and ids is None:     # transition computed on the base dots exactly as before; extras sit still
@@ -546,6 +560,9 @@ def sheet_transition(t, u, v, p_, ids=None):
     cx, cy = ORBIT.get('cx', W / 2), ORBIT.get('cy', H / 2)
     dirn = T_.get('dir', 1.0)
     mover = p_ > 0.35                                            # the figure flies; the empty field only fades
+    if MOVERMAP.get('m') is not None:
+        mm_ = MOVERMAP['m']
+        mover = mm_[np.clip(np.round(v).astype(int), 0, mm_.shape[0] - 1), np.clip(np.round(u).astype(int), 0, mm_.shape[1] - 1)] > 0.5
     if T_.get('mode') == 'flow':
         return flow_transition(t, u, v, mover, ids, HSH, (r1, r2, r3, r4, r5, r6))
     if T_.get('mode') == 'hands':
