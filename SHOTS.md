@@ -274,3 +274,6 @@ cp pipeline/land/landLoop.py . ; env $(cat land_loop_final.env) OUTS=3 python3 l
   Style frames: t = 0.12, 0.33, 0.45, 0.55, 0.66. TILT=0 YAW=0 needed (the sheet's default camera shifted it off-centre).
 - Bloom fix: top 28 % of the rose (topk) unfurls outward (`R_BLOOMR=0.6`), drifts down (`R_BDOWN=0.30`), loosens vertically
   (`R_BYSP=0.28`) and fades sooner → no particle "lid" under the apex. 3 s test = frames 128–203 (two processes 128,166 | 166,203).
+- **Full loop**: `env $(cat presets/rose916_sf.env) python3 rose916.py <obj> <colour> <normal> <ao> out/rose916_full 0 247` (+ `247 493`
+  in parallel) → 493 frames, 19.72 s. Verified: wrap 492→0 diff 1.76 vs neighbours 1.6–1.7 (seamless), no spikes, extent
+  x 35–1034 / y 275–1621 of 1080×1920. Approved test settings unchanged.
