@@ -215,3 +215,8 @@ cp pipeline/land/landLoop.py . ; env $(cat land_loop_final.env) OUTS=3 python3 l
   New `TRANS_MODE=arc` (depth_sheet `arc_transition`): in along a Bezier arc (`ARC_S`/`ARC_C` offsets from her landing
   centroid, default 447,-407 / 325,-10 = from the top right, curving down then left), per-dot 3D helix (depth → brightness),
   fan-out spread, ~12% laggards, materialise over the first third; out along `ODIR` (default -0.985,-0.17) with lift `OLIFT`.
+
+## 22 · Kiss (second chorus) — 2 s test
+- `9ff6734f-couple_fix_2.mp4` (208 fr), test = frames 150–199 (6.0–8.0 s: leaning in → kiss).
+- `env $(cat presets/dance_full.env) FOOT_CROP=230,0,1500 CLIPLEN=100 python3 motion_sil3.py $A/9ff6734f-couple_fix_2.mp4 0 208 out/kiss_test 150 175`
+  (+ `175 200` in parallel). CLIPLEN=100 = no transitions in the test.
