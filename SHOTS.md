@@ -237,3 +237,15 @@ cp pipeline/land/landLoop.py . ; env $(cat land_loop_final.env) OUTS=3 python3 l
   refl1 (`depthjobs/refl1_fc.mp4` = full clip with the 1.5 pre-curve, 94 fr): `FLOW_DIR=-0.7,0.7 ODIR=-0.81,0.59 TRANS_IN=1.6,1.6 TRANS_OUT=1.4,1.6 OUTPAD=0.1 CLIPLEN=3.76`.
   refl2 (290 fr): `FLOW_DIR=-0.99,0.12 ODIR=-1,0.05 TRANS_IN=2.6,2.4 TRANS_OUT=2.2,2.6 OUTPAD=0.25 CLIPLEN=11.6`, RANGE 0,145 | 145,290.
   New `ODIR` / `OSCAT` for TRANS_MODE=hands (directional exit).
+
+## 24 · Birds flock (`66eaaad7-5434557`, 30 fps → frame-for-frame at 25, 240 fr) — 2 s test
+- `birds_prep.py src out.mp4 [f0 n]`: black-top-hat key (41 px ellipse; dark vs local sky → cloud bands vanish) → lit
+  birds on black. Test: `birds_prep.py <src> depthjobs/birds_t.mp4 95 50`.
+- `env $(cat dancer_preset_v6.env) ORBIT= MATTE= TILT=0 YAW=0 DLOHI=0,1 PULSEK=0 NOSPECKS=1 THIN= OUTS=1.5 FIT=cover
+  DARKCUT=0.04,0.12 PITCH=3.0 GAIN=1.4 TWK=3 STILL=… python3 depth_sheet_clip.py out/depth_hflat 0 50 x.mp4 depthjobs/birds_t.mp4 0`
+  (gulls_full.py route = `birds_full.py` keyed the cloud bands; dropped). Transitions to build: in from the right, out to the left.
+
+## 25 · Light-streak warp (`38a30124-12491717`, 30 fps → 25) — 2 s test
+- Test = source frames 100–149 (`select=gte(n\,100),setpts=N/25/TB -r 25`), floor cut + curve:
+  lutrgb `255*pow(max(val/255-0.075,0)/0.925,1.15)` → `depthjobs/warp_tc.mp4`.
+- Same base as birds, `PITCH=3.6 DARKCUT=0.08,0.2 GAIN=1.1 TWK=3`. Transitions to build: radial burst out from the centre (in and out).
