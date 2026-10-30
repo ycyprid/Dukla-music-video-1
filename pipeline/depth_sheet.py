@@ -363,6 +363,143 @@ def hands_transition(t, u, v, mover, R):
     return smp, vis, sf, sparks, g
 
 
+
+def _bez(p0, c, p1, s):
+    return (1 - s) ** 2 * p0 + 2 * (1 - s) * s * c + s * s * p1
+
+
+def arc_transition(t, u, v, mover, R):
+    """forming: particles swoop in along an arc (TRANS['arc'] = start / control offsets from the landing centre, in
+    design px: from the upper right, curving down and then left into her), each on its own scaled copy of the arc so
+    every path begins off-screen; around the arc each particle spirals on a 3D helix (depth -> brightness, so the
+    ribbon reads in perspective) and materialises over the first part of its flight. Landing: body centre first,
+    limbs follow, ~12% laggards trail behind. Dissolve: off to the side along TRANS['odir'] with a gentle lift,
+    leading side first, own helix + curl per particle, thinning as they go."""
+    T_ = TRANS
+    r1, r2, r3, r4, r5, r6 = R
+    n = u.size
+    ecx, ecy = T_['acx'], T_['acy']
+    S_ = np.array(T_['arc_s'], float); C_ = np.array(T_['arc_c'], float)
+    # ---- forming ----
+    # scale of each particle's arc copy: just enough that its start is off-screen (+ margin, + spread)
+    with np.errstate(divide='ignore', invalid='ignore'):
+        lx = np.where(S_[0] > 0, (W + 90 - u) / S_[0], np.where(S_[0] < 0, (u + 90) / -S_[0], np.inf))
+        ly = np.where(S_[1] < 0, (v + 90) / -S_[1], np.where(S_[1] > 0, (H + 90 - v) / S_[1], np.inf))
+    lam = np.minimum(lx, ly)
+    lam = np.clip(lam, 0.35, None) * (1.0 + 0.35 * r6) + 0.12
+    dx_, dy_ = u - ecx, v - ecy
+    limb = np.hypot(dx_, dy_ * 0.8)
+    limb = np.clip(limb / (np.percentile(limb[mover], 95) + 1e-6 if mover.any() else 1), 0, 1)
+    streams = 0.5 + 0.5 * np.sin(v / 61.0 + 1.7 * np.sin(u / 133.0)) * np.sin(u / 89.0 + 0.7)
+    lag = np.where(r3 > 0.88, 0.25 + 0.35 * r5, 0.0)                               # a few stragglers
+    key = 0.42 * limb + 0.22 * streams + 0.18 * r1 + 0.18 * np.clip(1 - (u - ecx + W / 2) / W, 0, 1)
+    sel = key[mover] if mover.any() else key
+    key = (key - sel.min()) / (np.ptp(sel) + 1e-6) + lag
+    key = key / (1 + 0.6)
+    din = T_['in_dur'] * (0.8 + 0.45 * r2) * (1 + 0.3 * lag)
+    tin = T_['in0'] + T_['in_spread'] * key
+    Rh = (35 + 110 * r4) * (0.6 + 0.4 * limb)                                      # helix radius
+    sn_ = np.hypot(*S_); snx, sny = -S_[1] / sn_, S_[0] / sn_                    # normal to the arc's overall direction
+    spn = (r3 - 0.5) * T_.get('arc_spread', 420.0); spt = (r2 - 0.5) * 0.5 * T_.get('arc_spread', 420.0)
+    turns = (0.9 + 1.1 * r5) * T_.get('arc_turns', 1.0)
+    ph0 = 2 * np.pi * r1
+    sgn = T_.get('arc_spin', 1.0)
+    def s_in(tt):
+        xi = (tt - tin) / din; xc = np.clip(xi, 0, 1)
+        prog = 0.65 * (1 - (1 - xc) ** 2.0) + 0.35 * (1 - (1 - xc) ** 3.2)
+        return np.where(xi <= 0, 1.0, np.where(xi >= 1, 0.0, 1 - prog))
+    def p_in(sv):                                     # sv: 1 = start (off-screen), 0 = landed
+        bx = _bez(0.0, C_[0], S_[0], sv) * lam; by = _bez(0.0, C_[1], S_[1], sv) * lam
+        tx = 2 * (1 - sv) * C_[0] + 2 * sv * (S_[0] - C_[0]); ty = 2 * (1 - sv) * C_[1] + 2 * sv * (S_[1] - C_[1])
+        tn = np.hypot(tx, ty) + 1e-6; nx_, ny_ = -ty / tn, tx / tn
+        env = np.sin(np.pi * np.clip(sv, 0, 1)) ** 0.8
+        phi = ph0 + sgn * 2 * np.pi * turns * sv
+        fan = np.clip(sv, 0, 1) ** 1.4                 # the stream fans out towards its start: no rigid ghost of her
+        x = u + bx + Rh * env * np.cos(phi) * nx_ + fan * (spn * snx + spt * S_[0] / sn_)
+        y = v + by + Rh * env * np.cos(phi) * ny_ + fan * (spn * sny + spt * S_[1] / sn_)
+        z = Rh * env * np.sin(phi)                    # + towards the viewer
+        return x, y, z
+    # ---- dissolve ----
+    od = np.array(T_['odir'], float); od /= np.linalg.norm(od); pdv = np.array([-od[1], od[0]])
+    ex_ = u * od[0] + v * od[1]
+    lead = np.clip((ex_ - ex_[mover].min()) / (np.ptp(ex_[mover]) + 1e-6), 0, 1) if mover.any() else np.zeros(n)
+    lag_o = np.where(r6 > 0.88, 0.22 + 0.3 * r2, 0.0)
+    key_o = 0.55 * (1 - lead) + 0.22 * (1 - streams) + 0.23 * r5 + lag_o
+    key_o = key_o / (1 + 0.5)
+    dout = T_['out_dur'] * (0.75 + 0.5 * r2)
+    tout = T_['out0'] + T_['out_spread'] * key_o
+    with np.errstate(divide='ignore', invalid='ignore'):
+        lxo = np.where(od[0] > 1e-6, (W + 70 - u) / od[0], np.where(od[0] < -1e-6, (u + 70) / -od[0], np.inf))
+    Lo = lxo * (1.0 + 0.45 * r6) + 50
+    curl = (30 + 80 * r4) * np.where(r3 > 0.5, 1.0, -1.0)
+    Ro = (14 + 50 * r3) * (0.5 + 0.5 * limb); tno = 0.6 + 0.9 * r4
+    def s_out(tt):
+        xo = np.clip((tt - tout) / dout, 0, 1)
+        return xo ** 1.6
+    def path(tt):
+        si = s_in(tt); xi, yi, zi = p_in(si)
+        so = s_out(tt)
+        cb = curl * np.sin(np.pi * 0.5 * so) * so
+        hel = Ro * np.sin(np.pi * np.clip(so * 1.6, 0, 1)) ** 0.8
+        ph = ph0 + sgn * 2 * np.pi * tno * so
+        xo = u + od[0] * Lo * so + pdv[0] * (cb + hel * np.cos(ph))
+        yo = v + od[1] * Lo * so + pdv[1] * (cb + hel * np.cos(ph)) - T_.get('olift', 40.0) * so * so
+        zo = hel * np.sin(ph)
+        out_ = so > 0
+        x = np.where(out_, xo, xi); y = np.where(out_, yo, yi); z = np.where(out_, zo, zi)
+        sp = np.where(out_, so, si)
+        x = np.where(mover, x, u); y = np.where(mover, y, v); sp = np.where(mover, sp, 0.0); z = np.where(mover, z, 0.0)
+        return x, y, sp, z
+    K = 7
+    smp = [path(t + (k + 0.5) / K * 0.6 / 25) for k in range(K)]
+    x, y, sf, z = smp[K // 2]
+    si_ = np.clip(s_in(t), 0, 1); so_ = s_out(t)
+    mat = np.clip((1 - si_) / 0.35, 0, 1); mat = mat * mat * (3 - 2 * mat)      # materialise over the first ~third
+    vin = mat * (1 + 0.5 * si_)
+    vo = np.clip((1 - so_) / 0.6, 0, 1); vo = vo * vo * (3 - 2 * vo)
+    life = 0.45 + 0.55 * r1
+    vth = np.clip((life - so_) / 0.2, 0, 1)
+    vis = vin * vo * vth * (1 - 0.4 * so_)
+    vis = vis * np.clip(1 + z / 120.0, 0.45, 1.4)                                # depth on the helix: near = brighter
+    g_in = np.clip((t - (T_['in0'] + 0.5 * T_['in_spread'])) / (0.9 * T_['in_dur']), 0, 1)
+    g_out = 1 - np.clip((t - T_['out0']) / (0.6 * T_['out_spread'] + 0.5 * T_['out_dur']), 0, 1)
+    g = (g_in * g_in * (3 - 2 * g_in)) * (g_out * g_out * (3 - 2 * g_out))
+    vis = np.where(mover, vis, g)
+    SU, SV, SW, SR, SCi = [], [], [], [], []
+    hosts = np.nonzero(mover)[0]
+    if hosts.size:
+        hr = np.random.default_rng(4244)
+        for gi, lg in enumerate((0.05, 0.11, 0.18, 0.27)):
+            pick = hosts[hr.random(hosts.size) < 0.05]
+            sa = hr.uniform(0, 2 * np.pi, n); sc_ = hr.uniform(10, 40, n); ph = hr.random(n); fq = hr.uniform(4, 9, n)
+            for out, tt in ((False, t - lg), (True, t + lg * 0.6)):
+                if not pick.size:
+                    continue
+                px, py, _, _ = path(tt)
+                ss = (s_out(tt) if out else np.clip(s_in(tt), 0, 1))[pick]
+                al = (ss > 0.04) & (ss < (0.96 if out else 0.7))
+                if not al.any():
+                    continue
+                q = pick[al]; sq = ss[al]
+                env = np.sin(np.pi * sq) ** 0.8 * (0.35 + 0.65 * np.maximum(np.sin(2 * np.pi * (fq[q] * t + ph[q])), 0) ** 6)
+                spr = sc_[q] * sq
+                SU.append(px[q] + np.cos(sa[q]) * spr); SV.append(py[q] + np.sin(sa[q]) * spr)
+                SW.append(env * (1.0 if out else 1.4)); SR.append(np.full(q.size, 0.7)); SCi.append(232 + hr.random(q.size) * 23)
+        gl = hosts[np.random.default_rng(97).random(hosts.size) < 0.10]
+        tau = t - (tin[gl] + din[gl])
+        al = (tau > 0) & (tau < 0.6)
+        if al.any():
+            q = gl[al]; tq = tau[al]
+            env = np.exp(-tq / 0.18) * (1 - np.exp(-tq / 0.025))
+            SU.append(u[q] - 60 * tq); SV.append(v[q] - 20 * tq)
+            SW.append(env * 3.0); SR.append(np.full(q.size, 0.65)); SCi.append(np.full(q.size, 250.0))
+    sparks = None
+    if SU:
+        sparks = (np.concatenate(SU), np.concatenate(SV), L.PAL[np.concatenate(SCi).astype(np.uint8)],
+                  np.concatenate(SW), np.concatenate(SR))
+    return smp, vis, sf, sparks, g
+
+
 def sweep_vis(x, y, t):
     """breeze specks: blow in as a wave from the top-left (along the wind) and clear the same way at the end"""
     T_ = TRANS
@@ -413,6 +550,8 @@ def sheet_transition(t, u, v, p_, ids=None):
         return flow_transition(t, u, v, mover, ids, HSH, (r1, r2, r3, r4, r5, r6))
     if T_.get('mode') == 'hands':
         return hands_transition(t, u, v, mover, (r1, r2, r3, r4, r5, r6))
+    if T_.get('mode') == 'arc':
+        return arc_transition(t, u, v, mover, (r1, r2, r3, r4, r5, r6))
     # ---- stagger (overlapping motion) ----
     figd = np.hypot(u - cx, (v - cy) * 0.8)
     limb = np.clip(figd / (np.percentile(figd[mover], 95) + 1e-6 if mover.any() else 1), 0, 1)

@@ -139,7 +139,7 @@ for i, f in enumerate(fs):
         BT = 60.0 / 146
         TL = float(os.environ.get('CLIPLEN', n / 25.0))
         isp, idu = (float(x_) for x_ in os.environ.get('TRANS_IN', '1.6,1.7').split(','))
-        if os.environ.get('TRANS_MODE') == 'hands':
+        if os.environ.get('TRANS_MODE') in ('hands', 'arc'):
             osp, odu = (float(x_) for x_ in os.environ.get('TRANS_OUT', '2.2,2.6').split(','))
             fdx, fdy = (float(x_) for x_ in os.environ.get('FLOW_DIR', '-1,0').split(','))
             if 'ocx' not in HC:                        # dispersal centre: the subject's lit centroid over the last second
@@ -158,6 +158,23 @@ for i, f in enumerate(fs):
                                  in0=0.0, in_spread=isp * BT, in_dur=idu * BT,
                                  out0=TL - (osp * BT + float(os.environ.get('OUTK', '1.25')) * odu * BT) - float(os.environ.get('OUTPAD', '0.15')), out_spread=osp * BT, out_dur=odu * BT,
                                  ocx=float(np.ravel(ocx)[0]), ocy=float(np.ravel(ocy)[0])))
+            if os.environ.get('TRANS_MODE') == 'arc':
+                if 'acx' not in HC:                    # landing centre: her lit centroid over the first second
+                    xs_, ys_ = [], []
+                    for j in range(0, min(n, 25)):
+                        yy_, xx_ = np.nonzero(lumf[j] > 25)
+                        if len(xx_):
+                            xs_.append(xx_.mean()); ys_.append(yy_.mean())
+                    HC['acx'] = float(np.mean(xs_)) if xs_ else W / 2; HC['acy'] = float(np.mean(ys_)) if ys_ else H / 2
+                acx, acy = np.array([HC['acx']]), np.array([HC['acy']])
+                if os.environ.get('FIT'):
+                    acx, acy = DS.fit_frame(acx, acy)
+                ev2 = lambda k_, d_: tuple(float(x_) for x_ in os.environ.get(k_, d_).split(','))
+                DS.TRANS.update(dict(mode='arc', acx=float(np.ravel(acx)[0]), acy=float(np.ravel(acy)[0]),
+                                     arc_s=ev2('ARC_S', '447,-407'), arc_c=ev2('ARC_C', '325,-10'),
+                                     odir=ev2('ODIR', '-0.985,-0.17'), olift=float(os.environ.get('OLIFT', '40')),
+                                     arc_turns=float(os.environ.get('ARC_TURNS', '1')), arc_spin=float(os.environ.get('ARC_SPIN', '1')),
+                                     sp_in0=0.0, sp_in_spread=4 * BT, sp_fade=1.0 * BT, sp_out0=TL - 4.2 * BT, sp_out_spread=3.0 * BT))
         else:
           DS.TRANS.update(dict(dir=float(os.environ.get('TRANS_DIR', '1')), os=float(os.environ.get('TRANS_OS', '0.8')),
                              in0=0.0, in_spread=isp * BT, in_dur=idu * BT,

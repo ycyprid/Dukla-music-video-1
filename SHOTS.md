@@ -209,3 +209,9 @@ cp pipeline/land/landLoop.py . ; env $(cat land_loop_final.env) OUTS=3 python3 l
 - Skin lift (footage only, depth from the ungraded clip): `lutrgb` each channel `255*pow(max(val/255-0.03,0)/0.97,0.6)` → `depthjobs/balf_g0.6.mp4`.
 - `env $(cat dancer_preset_v6.env) PITCH=4.2 OUTS=1.5 RANGE=5,43 | 43,80 STILL=out/balf_test/balf python3 depth_sheet_clip.py out/depth_balf_t 0 85 x.mp4 depthjobs/balf_g0.6.mp4 0`
   (PITCH 6 → 4.2: ~9 → ~13 dots across the face; 4K: OUTS=3).
+- **Ballerina fix full (12 s, clip frames 0–299)**: `ffmpeg -i <clip> -frames:v 300` → `depthjobs/balf_full.mp4`; same skin
+  lift → `balf_full_g.mp4`; depth 1920 (`depth_full2` + `depth_stab2 … 3 0.035 0.06`) → `out/depth_balf`.
+  `env $(cat presets/balf_full.env) OUTS=1.5 RANGE=0,150 | 150,300 STILL=out/balf_full/balf python3 depth_sheet_clip.py out/depth_balf 0 300 x.mp4 depthjobs/balf_full_g.mp4 0`
+  New `TRANS_MODE=arc` (depth_sheet `arc_transition`): in along a Bezier arc (`ARC_S`/`ARC_C` offsets from her landing
+  centroid, default 447,-407 / 325,-10 = from the top right, curving down then left), per-dot 3D helix (depth → brightness),
+  fan-out spread, ~12% laggards, materialise over the first third; out along `ODIR` (default -0.985,-0.17) with lift `OLIFT`.
