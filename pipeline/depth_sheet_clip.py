@@ -158,6 +158,8 @@ for i, f in enumerate(fs):
                                  in0=0.0, in_spread=isp * BT, in_dur=idu * BT,
                                  out0=TL - (osp * BT + float(os.environ.get('OUTK', '1.25')) * odu * BT) - float(os.environ.get('OUTPAD', '0.15')), out_spread=osp * BT, out_dur=odu * BT,
                                  ocx=float(np.ravel(ocx)[0]), ocy=float(np.ravel(ocy)[0])))
+            if os.environ.get('ODIR') and os.environ.get('TRANS_MODE') == 'hands':   # directional exit
+                DS.TRANS.update(dict(odir=tuple(float(x_) for x_ in os.environ['ODIR'].split(',')), oscat=float(os.environ.get('OSCAT', '0.5'))))
             if os.environ.get('TRANS_MODE') == 'arc':
                 if 'acx' not in HC:                    # landing centre: her lit centroid over the first second
                     xs_, ys_ = [], []

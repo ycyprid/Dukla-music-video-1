@@ -233,3 +233,7 @@ cp pipeline/land/landLoop.py . ; env $(cat land_loop_final.env) OUTS=3 python3 l
   New `LUMSCALE` (depth_sheet_clip): scales the footage light → dimmer + warmer (overlays).
 - Transitions still to build (refs): refl1 in from top-right moving down-left, out down-left; refl2 in from the right, out to the left.
 - refl1 v2 (brighter overlaps): footage pre-curve `lutrgb … 255*pow(val/255,1.5)` → `depthjobs/refl1_tc.mp4`, then `LUMSCALE=0.86 GAIN=0.95 TWK=4`.
+- **Full runs**: flat depth extended to 290 frames; common `TRANS=1 TRANS_MODE=hands IN_XMIN=0 T0ABS=1 OUTK=1.0 OUTS=1.5` + the test settings.
+  refl1 (`depthjobs/refl1_fc.mp4` = full clip with the 1.5 pre-curve, 94 fr): `FLOW_DIR=-0.7,0.7 ODIR=-0.81,0.59 TRANS_IN=1.6,1.6 TRANS_OUT=1.4,1.6 OUTPAD=0.1 CLIPLEN=3.76`.
+  refl2 (290 fr): `FLOW_DIR=-0.99,0.12 ODIR=-1,0.05 TRANS_IN=2.6,2.4 TRANS_OUT=2.2,2.6 OUTPAD=0.25 CLIPLEN=11.6`, RANGE 0,145 | 145,290.
+  New `ODIR` / `OSCAT` for TRANS_MODE=hands (directional exit).
