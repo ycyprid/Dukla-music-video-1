@@ -1,6 +1,7 @@
 import cv2, numpy as np, subprocess, os
 
-W, H, FPS = 1280, 720, 30
+W, H = (int(x_) for x_ in os.environ.get('DESIGN', '1280x720').split('x'))   # design canvas (720x1280 = 9:16)
+FPS = 30
 BPM = 100.0
 BEAT = 60.0 / BPM
 

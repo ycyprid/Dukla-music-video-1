@@ -263,3 +263,12 @@ cp pipeline/land/landLoop.py . ; env $(cat land_loop_final.env) OUTS=3 python3 l
 - **Warp source fix**: `12491717` is 25 fps content with every 6th frame duplicated (300 → 250 unique). Plate rebuilt from the
   unique frames (drop frames whose diff to the previous < 0.25×median) → `depthjobs/warp_full.mp4` (250 fr, real time), then
   warp_prep; render with `CLIPLEN=10`, 0 250, RANGE 0,125 | 125,250. (Birds source checked: no duplicates.)
+
+## 26 · Side screens: 9:16 rose loop (style frame stage)
+- Model `Red_rose_SF.obj` (+ `.mtl`; maps uploaded as images: colour `a2ae3c42-image.jpg`, normal `50b48692-image.jpg`,
+  occlusion `d4d39c86-image.jpg`, 2576², OBJ is Y-up). `common.py` now takes `DESIGN=720x1280` (9:16 canvas; OUTS=1.5 → 1080×1920).
+- `env $(cat presets/rose916_sf.env) python3 rose916.py <obj> <colour> <normal> <ao> outdir f0 f1 [t1,t2,…]` (t = loop fractions
+  → stills). Loop 493 frames (48 beats, 19.72 s), 4 turns (= previous rose speed); dissolve wave up the rose (TD0/TDS),
+  particles spiral up and evaporate, rebuild wave (TR0/TRS) from twins rising from below; ripple ahead of the fronts;
+  framing fitted to the bounding cylinder over the turn + the flight envelope (4 % / 3.5 % margins) → rose ≈ 66 % of the height.
+  Style frames: t = 0.12, 0.33, 0.45, 0.55, 0.66. TILT=0 YAW=0 needed (the sheet's default camera shifted it off-centre).
