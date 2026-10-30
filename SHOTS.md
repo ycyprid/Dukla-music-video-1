@@ -277,3 +277,8 @@ cp pipeline/land/landLoop.py . ; env $(cat land_loop_final.env) OUTS=3 python3 l
 - **Full loop**: `env $(cat presets/rose916_sf.env) python3 rose916.py <obj> <colour> <normal> <ao> out/rose916_full 0 247` (+ `247 493`
   in parallel) → 493 frames, 19.72 s. Verified: wrap 492→0 diff 1.76 vs neighbours 1.6–1.7 (seamless), no spikes, extent
   x 35–1034 / y 275–1621 of 1080×1920. Approved test settings unchanged.
+- **v2 (+ swirling streams, + transition copy)**: 12 comet streams on world-fixed helices spiralling DOWN (R_NSTR, R_STRW=1.8;
+  whole turns/descents per loop), occluded by the rose. `RIMS=0.054009542` pinned (= the loop's own calibration) + fixed
+  `R_LREF=0.85` → loop and transition copy are pixel-identical outside the transitions (verified frame 250: diff 0).
+  Transition copy: `R_TRANS=1` (same command) → in = twins spiral up from below, stem first (blossom timing: TRANS_IN 2.6,2.4
+  beats → formed by ~2.3 s), out = peel off + spiral up (TRANS_OUT 2.2,2.6 → from ~17.3 s, black by ~19.6 s); streams + dust fade with it.

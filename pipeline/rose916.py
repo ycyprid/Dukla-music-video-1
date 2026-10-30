@@ -111,9 +111,27 @@ rad_f = (RF * np.tanh((rad0 * EV('R_RX', '1.15') + EV('R_RA', '0.05') + EV('R_RB
 rad_f = (rad_f + topk * EV('R_BLOOMR', '0.6') * (0.4 + 0.9 * q6) * (RF - rad_f) / RF).astype(np.float32)   # the cloud keeps the rose's shape
 
 
+TRANS_ON = bool(os.environ.get('R_TRANS'))
+BTr = 60.0 / 146
+k01 = np.clip(key, 0, 1).astype(np.float32)
+dinT = (EV('R_TIDU', '2.4') * BTr * (0.8 + 0.4 * q3)).astype(np.float32)     # blossom: TRANS_IN=2.6,2.4 beats
+tlT = (dinT.max() + 0.04 + EV('R_TISP', '2.6') * BTr * k01).astype(np.float32)  # stem foot lands first
+doT = (EV('R_TODU', '2.6') * BTr * (0.75 + 0.5 * q2)).astype(np.float32)     # blossom: TRANS_OUT=2.2,2.6 beats
+toT = (T - EV('R_TOSP', '2.2') * BTr - doT.max() - 0.15 + EV('R_TOSP', '2.2') * BTr * k01).astype(np.float32)
+TT = {'t': 0.0}
+TRA = lambda t: ((lambda a_: a_ * a_ * (3 - 2 * a_))(np.clip((t - 0.1) / 1.6, 0, 1)) *
+                 (lambda b_: b_ * b_ * (3 - 2 * b_))(np.clip((T - 0.15 - t) / 1.8, 0, 1))) if TRANS_ON else 1.0
+
+
 def flight(tt):
     """returns r, angle, y (model frame), b (0 home .. 1 fully airborne), s (flight progress), vis (spark weight)"""
     so = (tt - td) / dout; si = (tt - (tr - din)) / din
+    if TRANS_ON:                                                       # opening / closing transitions (blossom timing)
+        siT = (TT['t'] - (tlT - dinT)) / dinT; soT = (TT['t'] - toT) / doT
+        pre = TT['t'] < tlT
+        si = np.where(pre, siT, si); so = np.where(pre, 1.0, so)       # before landing: not there yet / flying in
+        post = TT['t'] > toT
+        so = np.where(post, soT, so); si = np.where(post, 0.0, si)
     out_ = (so > 0) & (so < 1); in_ = (si > 0) & (si < 1) & ~out_
     gone = (so >= 1) & (si <= 0)                                     # between the flights: evaporated
     s = np.where(out_, so, np.where(in_, 1 - si, 0)).astype(np.float32)   # 0 at home .. 1 far end (top / bottom)
@@ -174,8 +192,40 @@ if os.environ.get('R_LREF'):
     LREF['lref'] = EV('R_LREF', '1')
 
 
+def streams(tt, zocc):
+    """comet streams spiralling DOWN around the rose in perspective (world-fixed helices, own speeds), passing behind
+    (hidden by the rose) and in front of it; head + fading frayed tail; whole turns and whole descents per loop."""
+    if 'str' not in LREF:
+        g_ = np.random.default_rng(31); S_ = []
+        for k in range(int(EV('R_NSTR', '9'))):
+            S_.append(dict(r=g_.uniform(0.25, Rmax - 0.02), turns=int(g_.integers(3, 7)) * (1 if g_.random() < 0.7 else -1),
+                           kd=int(g_.integers(1, 3)), ph=g_.random(), ph2=g_.random(), n=int(g_.integers(260, 420)),
+                           tau=g_.uniform(0.05, 0.10), jit=g_.normal(0, 0.008, (420, 3)), wob=g_.uniform(0.01, 0.03)))
+        LREF['str'] = S_
+    U, V_, Wt, C = [], [], [], []
+    for S in LREF['str']:
+        n = S['n']; sf = np.linspace(0, 1, n).astype(np.float32)          # 0 = head .. 1 = tail end
+        tq = tt / T - S['tau'] * sf                                       # tail = where the head was
+        fy = (S['ph'] + S['kd'] * tq) % 1.0                               # descent, wraps under the safe frame
+        y = YT - fy * (YT - YB)
+        th = 2 * np.pi * (S['ph2'] + S['turns'] * tq)
+        rr = S['r'] * (1 + 0.06 * np.sin(2 * np.pi * (2 * tq + S['ph'])))
+        Pw = np.stack([rr * np.cos(th), y + S['wob'] * np.sin(3 * th), rr * np.sin(th)], -1).astype(np.float32)
+        Pw += S['jit'][:n].astype(np.float32) * (0.2 + 1.3 * sf[:, None])        # tail frays
+        uk, vk, zk, _, _ = project(Pw, 0.0)
+        ins = (uk > 0) & (uk < W - 1) & (vk > 0) & (vk < H - 1)
+        vis = ins.copy(); vis[ins] = zk[ins] <= zocc[vk[ins].astype(int), uk[ins].astype(int)] + 0.02
+        near = np.clip((Dcam + 0.4 - zk) / 0.8, 0.3, 1.3)
+        edge = np.sin(np.pi * np.clip(fy, 0, 1)) ** 0.7                    # fade in at the top, out at the bottom
+        tw = 1 + 1.6 * np.maximum(np.sin(2 * np.pi * (int(EV('R_STWF', '24')) * tt / T + 9 * sf + S['ph'])), 0) ** 8
+        w = (1 - sf) ** 1.5 * (0.3 + 0.7 * (sf < 0.025)) * EV('R_STRW', '0.6') * near * edge * tw
+        U.append(uk[vis]); V_.append(vk[vis]); Wt.append(w[vis]); C.append((240 - 80 * sf)[vis])
+    return np.concatenate(U), np.concatenate(V_), np.concatenate(Wt), np.concatenate(C)
+
+
 def frame(t):
-    tt = t % T
+    tt = t % T if not TRANS_ON else t
+    TT['t'] = t
     yaw = np.radians(EV('R_YAW', '20')) + EV('R_DIR', '-1') * 2 * np.pi * TURNS * tt / T
     r, a, y, b, s, fvis = flight(tt)
     air = fvis > 0
@@ -221,7 +271,9 @@ def frame(t):
     lv = np.clip(lum_p[fl] / LREF['lref'], 0, 1)
     for k in range(K):
         tk = tt + (k + 0.5) / K * EV('R_SHUT', '1.4') / FPS
+        TT['t'] = tk
         rk, ak, yk, bk, sk, vk_ = flight(tk)
+        TT['t'] = t
         Pf = np.stack([rk[fl] * np.cos(ak[fl]), yk[fl], rk[fl] * np.sin(ak[fl])], -1).astype(np.float32)
         yawk = np.radians(EV('R_YAW', '20')) + EV('R_DIR', '-1') * 2 * np.pi * TURNS * tk / T
         uk, vk, zk, _, _ = project(Pf, yawk)
@@ -249,12 +301,17 @@ def frame(t):
     hidd = np.zeros(ud.size, bool); hidd[insd] = zd[insd] > zocc[vd[insd].astype(int), ud[insd].astype(int)] + 0.02
     twd = 0.5 + 0.5 * np.sin(2 * np.pi * (3 * tt / T * 4 + tq_)) ** 2
     U.append(ud[~hidd]); Vv.append(vd[~hidd]); Wt.append((dw_ * EV('R_DUST', '0.45') * fade * twd)[~hidd]); Ci.append(dc_[~hidd])
+    Wt[-1] = Wt[-1] * TRA(t)
+    if EV('R_STREAMS', '1') > 0:
+        su, sv, sw, sc = streams(tt, zocc)
+        U.append(su); Vv.append(sv); Wt.append(sw * TRA(t)); Ci.append(sc)
     U, Vv, Wt, Ci = (np.concatenate(a_) for a_ in (U, Vv, Wt, Ci))
     DS.EXTRA.update(u=U, v=Vv, w=Wt, col=L.PAL[np.clip(Ci, 0, 255).astype(np.uint8)])
     return DS.render(dep, 1, tt, None, None, None, None, lum)
 
 
 frame(0.0)                                         # exposure reference from the intact rose
+print('RIMSCALE', DS.RIMSCALE.get('s'), flush=True)
 if TLIST:
     for tq in TLIST:
         img = frame(tq * T)
