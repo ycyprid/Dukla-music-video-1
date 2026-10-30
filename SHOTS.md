@@ -272,3 +272,5 @@ cp pipeline/land/landLoop.py . ; env $(cat land_loop_final.env) OUTS=3 python3 l
   particles spiral up and evaporate, rebuild wave (TR0/TRS) from twins rising from below; ripple ahead of the fronts;
   framing fitted to the bounding cylinder over the turn + the flight envelope (4 % / 3.5 % margins) → rose ≈ 66 % of the height.
   Style frames: t = 0.12, 0.33, 0.45, 0.55, 0.66. TILT=0 YAW=0 needed (the sheet's default camera shifted it off-centre).
+- Bloom fix: top 28 % of the rose (topk) unfurls outward (`R_BLOOMR=0.6`), drifts down (`R_BDOWN=0.30`), loosens vertically
+  (`R_BYSP=0.28`) and fades sooner → no particle "lid" under the apex. 3 s test = frames 128–203 (two processes 128,166 | 166,203).

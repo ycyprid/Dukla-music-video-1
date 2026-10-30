@@ -100,9 +100,15 @@ YT = EV('R_YTOP', '0.56'); YB = -0.56
 RF = EV('R_RF', '0.30')                                   # helix radius (kept inside the turn's envelope)
 climb_o = ((YT - P[:, 1]) * (EV('R_CLO', '0.30') + 0.45 * q4)).astype(np.float32)      # never past the apex
 climb_i = ((P[:, 1] - YB) * (EV('R_CLI', '0.25') + 0.40 * q5)).astype(np.float32)      # never below the foot
+topk = np.clip((hgt - 0.72) / 0.28, 0, 1).astype(np.float32)
+# the bloom does not climb into a lid under the apex: it unfurls outward and drifts gently down the outside
+climb_o = (climb_o * (1 - topk) - topk * EV('R_BDOWN', '0.30') * (0.3 + 0.9 * q4)).astype(np.float32)
 SPIN = EV('R_SPIN', '1.1')                                 # turns around the stem per flight
 spin_o = (SPIN * (0.6 + 0.8 * q5)).astype(np.float32); spin_i = (SPIN * (0.6 + 0.8 * q4)).astype(np.float32)
-rad_f = (RF * np.tanh((rad0 * EV('R_RX', '1.15') + EV('R_RA', '0.05') + EV('R_RB', '0.10') * q3) / RF)).astype(np.float32)   # soft cap: no wall   # the cloud keeps the rose's shape
+rad_f = (RF * np.tanh((rad0 * EV('R_RX', '1.15') + EV('R_RA', '0.05') + EV('R_RB', '0.10') * q3) / RF)).astype(np.float32)   # soft cap: no wall
+# the bloom has little room to climb under the apex: it unfurls outward instead (and fades sooner), so it never
+# hangs as a disc
+rad_f = (rad_f + topk * EV('R_BLOOMR', '0.6') * (0.4 + 0.9 * q6) * (RF - rad_f) / RF).astype(np.float32)   # the cloud keeps the rose's shape
 
 
 def flight(tt):
@@ -117,13 +123,13 @@ def flight(tt):
     spin = np.where(out_, spin_o, spin_i); climb = np.where(out_, climb_o, -climb_i)
     th = ang0 + EV('R_DIR', '-1') * 2 * np.pi * spin * se * np.where(out_, 1, -1)
     rr = rad0 + (rad_f - rad0) * np.sin(np.pi * 0.5 * np.minimum(se * 1.6, 1))
-    yy = P[:, 1] + climb * se + EV('R_YSP', '0.07') * (q6 - 0.5) * se          # the cloud loosens vertically too
+    yy = P[:, 1] + climb * se + (EV('R_YSP', '0.07') + EV('R_BYSP', '0.28') * topk) * (q6 - 0.5) * se   # the cloud loosens vertically too
     wob = 0.010 * np.sin(2 * np.pi * (2.5 * s + q6))
     r = (1 - b) * rad0 + b * (rr + wob)
     a = (1 - b) * ang0 + b * th
     y = (1 - b) * P[:, 1] + b * yy
     air = out_ | in_
-    vis = np.where(out_, np.clip((1 - so) / 0.45, 0, 1) ** 1.2, np.clip(si / 0.35, 0, 1) ** 1.2) * air
+    vis = np.where(out_, np.clip((1 - so) / (0.45 + 0.25 * topk), 0, 1) ** (1.2 + 0.8 * topk), np.clip(si / 0.35, 0, 1) ** 1.2) * air
     b = np.where(gone, 1.0, b * air)
     return r, a, y, b, s, vis
 
