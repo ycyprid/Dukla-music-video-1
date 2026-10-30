@@ -249,3 +249,6 @@ cp pipeline/land/landLoop.py . ; env $(cat land_loop_final.env) OUTS=3 python3 l
 - Test = source frames 100–149 (`select=gte(n\,100),setpts=N/25/TB -r 25`), floor cut + curve:
   lutrgb `255*pow(max(val/255-0.075,0)/0.925,1.15)` → `depthjobs/warp_tc.mp4`.
 - Same base as birds, `PITCH=3.6 DARKCUT=0.08,0.2 GAIN=1.1 TWK=3`. Transitions to build: radial burst out from the centre (in and out).
+- **Warp v2 (overlay, softer)**: `warp_prep.py depthjobs/warp_t.mp4 depthjobs/warp_tv.mp4` (floor cut 0.075 + curve 1.15, then a
+  per-ray brightness field: angle noise around the vanishing point 960,560, skewed W_GP=2.2 so most streaks are dim; core
+  quieter), render `PITCH=3.6 DARKCUT=0.05,0.14 GAIN=0.9 LUMSCALE=0.6 TWK=3`.
