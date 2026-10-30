@@ -10,7 +10,7 @@ common.BEAT = 60.0 / 146
 EV = lambda k, d: float(os.environ.get(k, d))
 src, od, f0, f1 = sys.argv[1], sys.argv[2], int(sys.argv[3]), int(sys.argv[4])
 os.makedirs(od, exist_ok=True)
-cap = cv2.VideoCapture(src); NF = int(cap.get(cv2.CAP_PROP_FRAME_COUNT)); TL = NF / 25.0
+cap = cv2.VideoCapture(src); NF = int(cap.get(cv2.CAP_PROP_FRAME_COUNT)); TL = EV('FIRE_TL', str(NF / 25.0))
 w0 = max(0, f0 - 30)
 for _ in range(w0):
     cap.grab()

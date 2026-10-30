@@ -805,6 +805,10 @@ def render(dep, seed=1, t=0.0, pts=None, vis=None, ids=None, state=None, lum=Non
     col = L.PAL[((0.06 + 0.94 * v_) * 255).astype(np.uint8)]
     fog = np.clip(1 - (samp(PRESMAP['p0']) if (lum is not None and PRESMAP.get('a') is not None) else p_) * 1.4, 0, 1)[:, None]
     col = col * (1 - fog * 0.6) + L.DEEP * fog * 0.6
+    if os.environ.get('HOTW'):                    # white-hot: the brightest parts turn white-silver (fire core)
+        h0_, hk_ = (float(x_) for x_ in os.environ['HOTW'].split(','))
+        hw_ = np.clip((v_ - h0_) / (1 - h0_ + 1e-6), 0, 1); hw_ = (hw_ * hw_ * (3 - 2 * hw_) * hk_)[:, None]
+        col = col * (1 - hw_) + np.array([0.97, 0.97, 0.95], np.float32)[None] * hw_
     pfl = p_ if (lum is not None and PRESMAP.get('a') is not None) else (0.10 + 0.90 * p_)   # soft-edge mode: nothing outside
     w = (0.25 + 0.75 * v_) * pfl * 3.4 * (0.35 + 0.65 * f_ ** 2) * float(os.environ.get("GAIN", "1"))
     if CAM.get('dolly', 0) > 0:

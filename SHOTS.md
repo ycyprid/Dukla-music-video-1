@@ -188,3 +188,6 @@ cp pipeline/land/landLoop.py . ; env $(cat land_loop_final.env) OUTS=3 python3 l
   (matte pop area 24,066 → 135 px). Depth smoothed the same way: `python3 depth_tfilter.py ... out/depth_blossom2s` (A=0.75).
   Render: `env $(cat presets/blossom_preset_trans.env) MATTE_DIR=out/blossom_matte4 PNGDIR=out/blossom_v4 PNGNAME=blossom
   python3 clip_new.py out/blossom_footage_v2.mp4 out/depth_blossom2s 0 337 depthsubj x.mp4`
+- **Fire v2 (4 s 20 f)**: `env $(cat presets/fire_v2.env) python3 fire_clip.py <src> out/fire_v2 0 120` — GAIN 1.7,
+  `HOTW=0.72,0.85` (new depth_sheet option: brightest dots blend to white-silver), `FIRE_TL=4.8` moves the out-transition
+  to start at 2.6 s.
