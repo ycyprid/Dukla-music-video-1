@@ -105,7 +105,9 @@ def run(names, budget, workers):
     running = []
     print(f'[{time.strftime("%H:%M")}] {len(todo)} chunks to do', flush=True)
     while todo or running:
-        while todo and len(running) < workers and (time.time() - t0) / 60 < budget:
+        MEMCAP = float(os.environ.get('MEMCAP_GB', '6.2'))   # all processes share one memory limit (OOM kills otherwise)
+        while todo and len(running) < workers and (time.time() - t0) / 60 < budget and \
+                sum(it[1].get('mem', 2.5) for it in running) + todo[0][0].get('mem', 2.5) <= MEMCAP or (todo and not running and (time.time() - t0) / 60 < budget):
             j, r0, r1 = todo.pop(0); cdir = os.path.join(EXPORT, j['name'], f'c_{r0:04d}')
             k0 = r0                                        # resume inside an interrupted chunk: keep its finished frames
             while k0 < r1 and os.path.exists(frame_path(j, cdir, k0)) and os.path.exists(frame_path(j, cdir, k0 + 1) if k0 + 1 < r1 else frame_path(j, cdir, k0)):
