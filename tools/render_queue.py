@@ -39,7 +39,7 @@ def launch(j, r0, r1, cdir, outs):
         cmd += [cdir, str(j['f0'] + r0), str(j['f0'] + r1)]
     elif kind == 'sil':
         cmd += [cdir, str(r0), str(r1)]
-    log = open(os.path.join(cdir, 'log.txt'), 'w')
+    log = open(os.path.join(cdir, 'log.txt'), 'a')
     return subprocess.Popen(cmd, cwd=WORK, env=env, stdout=log, stderr=subprocess.STDOUT)
 
 
@@ -107,9 +107,14 @@ def run(names, budget, workers):
     while todo or running:
         while todo and len(running) < workers and (time.time() - t0) / 60 < budget:
             j, r0, r1 = todo.pop(0); cdir = os.path.join(EXPORT, j['name'], f'c_{r0:04d}')
-            shutil.rmtree(cdir, ignore_errors=True)
-            running.append((launch(j, r0, r1, cdir, j['layer']['outs']), j, r0, r1, cdir, time.time()))
-            print(f'[{time.strftime("%H:%M")}] start {j["name"]} {r0}-{r1}', flush=True)
+            k0 = r0                                        # resume inside an interrupted chunk: keep its finished frames
+            while k0 < r1 and os.path.exists(frame_path(j, cdir, k0)) and os.path.exists(frame_path(j, cdir, k0 + 1) if k0 + 1 < r1 else frame_path(j, cdir, k0)):
+                k0 += 1
+            k0 = max(r0, k0 - 1)                           # the last written frame may be truncated: redo it
+            if k0 == r0:
+                shutil.rmtree(cdir, ignore_errors=True)
+            running.append((launch(j, k0, r1, cdir, j['layer']['outs']), j, r0, r1, cdir, time.time()))
+            print(f'[{time.strftime("%H:%M")}] start {j["name"]} {r0}-{r1}' + (f' (resuming at {k0})' if k0 > r0 else ''), flush=True)
         if not todo or (time.time() - t0) / 60 >= budget:
             todo = [] if (time.time() - t0) / 60 >= budget else todo
         time.sleep(5)
