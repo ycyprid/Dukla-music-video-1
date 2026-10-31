@@ -13,7 +13,7 @@ import sil_bg
 
 EV = lambda k, d: float(os.environ.get(k, d))
 OW, OH = int(round(W * DS.OUTS)), int(round(H * DS.OUTS))
-SCR = os.environ.get('DBGDIR', '/tmp')
+SCR = os.environ.get('DBGDIR', '/tmp/claude-0/-home-claude/f42362b3-e77e-5554-9434-580f66a1e90e/scratchpad')
 CAMERA = dict(rim=dict(TILT=DS.TILT, YAW=DS.YAW, REL=DS.REL), bg=None)
 _C = {}
 

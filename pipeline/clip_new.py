@@ -64,6 +64,7 @@ if TRAIL:
     P_life = np.zeros(0); P_ph = np.zeros(0); P_fq = np.zeros(0); P_c = np.zeros(0); P_sw = np.zeros(0)
     prev_c = None; vel_s = np.zeros(2)
     SPAWN = int(os.environ.get('TRAIL_N', '34'))
+RNG_ = [int(x_) for x_ in os.environ['RANGE'].split(',')] if os.environ.get('RANGE') else None
 for i in range(n):
     d = np.clip((ldep(i) - dlo) / (dhi - dlo + 1e-6), 0, 1)
     g = gs[i].astype(np.float32) / 255; lum = g / LREF
@@ -228,6 +229,12 @@ for i in range(n):
         a_ = P_age / P_life
         env = (1 - a_) ** 1.5 * (1 - np.exp(-P_age / 0.05)) * (0.45 + 0.55 * np.maximum(np.sin(2 * np.pi * (P_fq * P_age + P_ph)), 0) ** 4)
         DS.EXTRA.update(u=P_x, v=P_y, w=env * float(os.environ.get('TRAIL_K', '1.6')), col=DS.L.PAL[P_c.astype(np.uint8)])
-    wr.write(DS.render(dep.astype(np.float32), 1, (a + i) / 25.0, None, None, IDS, ST, lum.astype(np.float32)))
+    if RNG_ and not (RNG_[0] - 6 <= i < RNG_[1]):         # chunked export: only the range (+6 warm-up frames) is rendered
+        continue
+    img_ = DS.render(dep.astype(np.float32), 1, (a + i) / 25.0, None, None, IDS, ST, lum.astype(np.float32))
+    if RNG_ and i < RNG_[0]:
+        continue
+    wr.i = i if RNG_ else wr.i
+    wr.write(img_)
 wr.close()
 print('done', out)

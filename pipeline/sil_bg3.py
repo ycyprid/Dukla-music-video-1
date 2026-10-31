@@ -239,7 +239,7 @@ if __name__ == '__main__':
     ok, fr = cap.read()
     img, parts = frame(fr, fi / 25.0)
     if os.environ.get('CHECKPROJ'):
-        os.environ['DBGDOTS'] = '/tmp/p3.npz'
+        os.environ['DBGDOTS'] = '/tmp/claude-0/-home-claude/f42362b3-e77e-5554-9434-580f66a1e90e/scratchpad/p3.npz'
         frame(fr, fi / 25.0)
         z = np.load(os.environ['DBGDOTS'])
         print('projection check: max |du| %.4f |dv| %.4f px' % (np.abs(z['u'] - parts['u']).max(), np.abs(z['v'] - parts['v']).max()))

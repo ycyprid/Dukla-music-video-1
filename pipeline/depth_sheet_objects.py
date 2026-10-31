@@ -201,8 +201,14 @@ def main():
             bm = cv2.erode((mattes.sky_matte(gray[i], W, H) > 0.5).astype(np.uint8), np.ones((3, 3), np.uint8)).astype(np.float32)
             fab = np.clip(hp / float(os.environ.get('FAB_HP', '0.06')), 0, 1) ** 1.2 * cv2.GaussianBlur(bm, (0, 0), 1.0)
         tt_ = (a + i) / 25.0 if TABS else i / 25.0
-        fr_ = DS.render(dep, 1, tt_, (X, Y), None, ID, ST, None, fab)
-        if STILL:
+        RNG_ = [int(x_) for x_ in os.environ['RANGE'].split(',')] if os.environ.get('RANGE') else None
+        if RNG_ and not (RNG_[0] - 6 <= a + i < RNG_[1]):     # chunked export: tracking runs on, rendering only in range
+            fr_ = None
+        else:
+            fr_ = DS.render(dep, 1, tt_, (X, Y), None, ID, ST, None, fab)
+        if fr_ is None or (RNG_ and a + i < RNG_[0]):
+            pass
+        elif STILL:
             cv2.imwrite(f'{STILL}_{a + i:04d}.png', (np.clip(fr_, 0, 1) * 65535 + 0.5).astype(np.uint16))
         else:
             wr.write(fr_)
