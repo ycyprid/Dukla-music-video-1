@@ -1,0 +1,35 @@
+order,mv_v2_in,mv_v2_out,layer,approved_file (1080p preview),source_frames_used,edit_notes,4k_needed
+1,00:00.0,00:12.5,main,blossom_full_1080p_v4.mp4,0-313,in-transition opens the video,yes
+2,00:12.4,00:26.4,main,landscape_loop15_transitions.mp4,24-374,,yes
+2,00:26.4,00:33.1,main,landscape_loop15_seamless.mp4,0-166,loop continues,yes
+2,00:33.1,00:39.6,main,landscape_wobble_from150.mp4,17-178,wobble version takes over,yes
+2,00:12.5,00:19.8,overlay,snow_full_1080p.mp4,34-217,over landscape,yes
+2,00:26.4,00:39.2,overlay,snow_full_1080p.mp4,37-357,second instance,(same file)
+2,00:19.5,00:26.1,overlay,pigeons_full_720p_v2.mp4,~0-165,MIRRORED in edit,yes
+3,00:39.4,00:53.3,main,dancer_full_1080p_v7.mp4,11-358,,yes
+3,00:48.0,00:54.6,overlay,pigeons_full_720p_v2.mp4,~0-165,,(same file)
+3,00:53.8,00:57.7,overlay,leaf_full_720p.mp4 (falling leaf),~0-95,,yes
+3,00:55.5,00:59.3,overlay,reflections1_full_1080p.mp4,0-94,,yes
+4,00:58.5,01:05.0,main,hands_full_1080p_v3.mp4,20-181,,yes
+5,01:05.0,01:12.2,main,dance_full_1080p.mp4,14-193,,yes
+6,01:11.6,01:18.0,main,ripples_7s5.mp4,~16-167,MIRRORED in edit,yes
+6,01:12.8,01:18.4,overlay,fireworks_full_720p.mp4,~205-345,,yes
+7,01:17.9,01:27.7,main,rose_LOCKED_1080p.mp4,16-260,,yes
+7,01:18.6,01:27.7,overlay,reflections2_full_1080p.mp4,26-255,MIRRORED in edit,yes
+8,01:27.8,01:33.3,main,leaf3_full_1080p_v3.mp4,~31-116,,yes
+9,01:33.4,01:43.8,main,ballerina_fix_full_1080p.mp4,12-273,,yes
+10,01:44.0,02:13.0,main,curtains_wobble_1m57.mp4,(rotated + doubled in edit; frame mapping not verifiable),both curtains,yes
+10,01:46.6,02:13.0,main,rose3d_trans_10s_v2.mp4 + rose3d_loop2_10s.mp4,trans 0-245 then loop2 repeated,scaled down in centre,yes (both)
+11,02:11.4,02:16.0,main,fire_4s20_v2.mp4,0-120,,yes
+12,02:15.1,02:21.5,main,pigeons_full_720p_v2.mp4,9-160,,(same file)
+12,02:17.8,02:21.6,overlay,leaf_full_720p.mp4,22-80,,(same file)
+13,02:21.5,02:28.0,main,hands_full_1080p_v3.mp4,20-181,repeat,(same file)
+14,02:28.0,02:35.2,main,dance_full_1080p.mp4,14-193,repeat,(same file)
+15,02:34.6,02:41.0,main,ripples_7s5.mp4,~16-167,repeat; MIRRORED,(same file)
+15,02:35.8,02:41.0,overlay,fireworks_full_720p.mp4,~205-345,repeat,(same file)
+16,02:41.2,02:51.2,main,rose_LOCKED_1080p.mp4,11-259,repeat,(same file)
+16,02:41.7,02:51.1,overlay,reflections2_full_1080p.mp4,16-252,repeat; MIRRORED,(same file)
+17,02:51.2,02:56.8,main,leaf3_full_1080p_v3.mp4,~31-116,repeat,(same file)
+18,02:57.0,03:09.4,main,blossom_full_1080p_v4.mp4,9-319,repeat (closes),(same file)
+19,03:09.4,03:21.5,main,fireworks_full_720p.mp4,27-328,ending,(same file)
+S,00:00.0,03:17.5,side screens,rose916_transitions_19s7 (in/out) + rose916_loop_19s7_v2 (loop),full,right screen = left MIRRORED; black-point fix,yes (at panel resolution)

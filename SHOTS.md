@@ -285,3 +285,9 @@ cp pipeline/land/landLoop.py . ; env $(cat land_loop_final.env) OUTS=3 python3 l
 - **Black point**: the renderer leaves a ~1.8 % deep-red floor (empty sheet glow, max ≈1217/65535). Both rose sequences get
   `python3 pipeline/blackpoint.py <dir> 1250` (same value for both → still pixel-identical outside the transitions; transition
   copy starts/ends at exactly 0). Do the same on the final-resolution renders (or set the floor off at the source).
+
+---
+## FINAL CUT (MV_v2, approved 31 Oct) — shots used → `FINAL_CUT_SHOTS.csv`
+Identified by frame matching (64×36 features) of MV_v2 against every 1080p preview, with residual matching (+ mirrored /
+zoomed variants) for overlays. Mirroring / rotation / scaling are done in AE → render the files un-flipped.
+Not used in the final cut: birds flock, light-streak warp, kiss, black hands, gulls, branch, rose fly-through, ballerina 2/3, stars.
