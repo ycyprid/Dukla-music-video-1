@@ -39,7 +39,7 @@ JOBS = [
  dict(name='blossom_v4', preview='full_new/blossom_full_1080p_v4.mp4', n=337, kind='cn', chunk=40,
       cmd=['clip_new.py', 'out/blossom_footage_v2.mp4', 'out/depth_blossom2s', '0', '337', 'depthsubj', 'x.mp4'],
       env=P('blossom_preset_trans.env') + ['MATTE_DIR=out/blossom_matte4']),
- dict(name='landscape_transitions', preview='full_new/landscape_loop15_transitions.mp4', n=375, used=(14, 375), kind='f01', chunk=40,
+ dict(name='landscape_transitions', preview='full_new/landscape_loop15_transitions.mp4', n=375, kind='f01', chunk=40,
       cmd=['landLoop_wob.py'], env=LAND + ['LOOPMODE=trans'], pat='f{:04d}.png'),
  dict(name='landscape_seamless', preview='full_new/landscape_loop15_seamless.mp4', n=375, used=(0, 177), kind='f01', chunk=40,
       cmd=['landLoop_wob.py'], env=LAND, pat='f{:04d}.png'),
