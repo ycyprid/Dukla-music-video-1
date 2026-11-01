@@ -85,8 +85,8 @@ JOBS = [
  dict(name='fire', preview='full_new/fire_4s20_v2.mp4', n=120, kind='f01', chunk=40,
       cmd=['fire_clip.py', f'{A}/9d8441a2-fire.mp4'], env=P('fire_full.env') + 'GAIN=1.7 HOTW=0.72,0.85 FIRE_TL=4.8'.split(), pat='fire_{:04d}.png'),
 ]
-MEM = dict(blossom_v4=3.6, snow=3.0, ripples=3.0, fireworks=3.0, leaf3=3.0, falling_leaf=2.5, curtains_wobble=3.0,
-           landscape_transitions=3.0, landscape_seamless=3.0, landscape_wobble=3.0)       # peak GB per 4K worker (measured / est.)
+MEM = dict(blossom_v4=3.6, snow=3.0, ripples=3.0, fireworks=3.0, leaf3=3.0, falling_leaf=2.5, curtains_wobble=3.5,
+           landscape_transitions=3.5, landscape_seamless=3.5, landscape_wobble=3.5)       # peak GB per 4K worker (measured / est.)
 for j in JOBS:
     j.setdefault('mem', MEM.get(j['name'], 2.8))
     j.setdefault('layer', MAIN); j.setdefault('f0', 0); j.setdefault('used', (0, j['n']))

@@ -97,7 +97,8 @@ def run(names, budget, workers):
     t0 = time.time(); todo = []
     for j in [BYNAME[n] for n in names] if names else JOBS:
         jd = os.path.join(EXPORT, j['name'])
-        if os.path.exists(os.path.join(EXPORT, 'final', j['name'] + '.mov')):
+        if os.path.exists(os.path.join(EXPORT, 'final', j['name'] + '.mov')) or \
+                os.path.exists(os.path.join(EXPORT, 'delivered', j['name'])):     # sent + deleted locally
             continue
         for r0, r1 in chunks(j):
             if not os.path.exists(os.path.join(jd, f'seg_{r0:04d}.mov')):
@@ -173,7 +174,7 @@ def verify(name, frames, outs):
 def status():
     for j in JOBS:
         jd = os.path.join(EXPORT, j['name'])
-        fin = os.path.exists(os.path.join(EXPORT, 'final', j['name'] + '.mov'))
+        fin = os.path.exists(os.path.join(EXPORT, 'final', j['name'] + '.mov')) or os.path.exists(os.path.join(EXPORT, 'delivered', j['name']))
         segs = sum(os.path.exists(os.path.join(jd, f'seg_{a:04d}.mov')) for a, _ in chunks(j))
         print(f"{j['name']:24s} {'FINAL' if fin else f'{segs}/{len(chunks(j))} chunks'}")
 
