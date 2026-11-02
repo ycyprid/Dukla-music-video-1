@@ -80,6 +80,9 @@ JOBS = [
       env=P('leaf3_preset_trans.env')),
  dict(name='ballerina_fix', preview='full_new/ballerina_fix_full_1080p.mp4', n=300, used=(2, 284), kind='dsc', chunk=40,
       cmd=['depth_sheet_clip.py', 'out/depth_balf', '0', '300', 'x.mp4', 'depthjobs/balf_full_g.mp4', '0'], env=P('balf_full.env')),
+ dict(name='leaf3_fade', preview='full_new/leaf3_full_1080p.mp4', n=149, kind='cn', chunk=50, mem=3.0,   # the edit's leaf 3 (fades, no particle transitions)
+      cmd=['clip_new.py', 'out/leaf3_footage_25fps_1920.mp4', 'out/depth_leaf3', '0', '149', 'scene', 'x.mp4'],
+      env=P('leaf3_preset.env') + 'SHOTFADE=0.4,0.5 CLIPLEN=5.96'.split()),
  dict(name='rose3d_transitions', preview='full_new/rose3d_trans_10s_v2.mp4', n=246, kind='f01', chunk=41,
       cmd=['rose3d_loop.py', f'{A}/6e565724-rosa.obj', f'{A}/7e7846bc-image.jpg'], env=P('rose3d_trans.env'), pat='rose3d_{:04d}.png'),
  dict(name='rose3d_loop', preview='full_new/rose3d_loop2_10s.mp4', n=246, kind='f01', chunk=41,
