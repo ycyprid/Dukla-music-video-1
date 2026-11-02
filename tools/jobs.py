@@ -43,6 +43,8 @@ JOBS = [
       cmd=['landLoop_wob.py'], env=LAND + ['LOOPMODE=trans'], pat='f{:04d}.png'),
  dict(name='landscape_seamless', preview='full_new/landscape_loop15_seamless.mp4', n=375, used=(0, 177), kind='f01', chunk=40,
       cmd=['landLoop_wob.py'], env=LAND, pat='f{:04d}.png'),
+ dict(name='landscape_seamless_end', n=95, f0=280, kind='f01', chunk=48,       # patch: loop frames 280-374 (the cut switches from transitions to seamless at ~296)
+      cmd=['landLoop_wob.py'], env=LAND, pat='f{:04d}.png'),
  dict(name='landscape_wobble', preview='full_new/landscape_wobble_from150.mp4', n=225, f0=150, used=(7, 189), kind='f01', chunk=40,
       cmd=['landLoop_wob.py'], env=LAND + 'LOOPMODE=trans WOB_T0=6.62'.split(), pat='f{:04d}.png'),
  dict(name='curtains_wobble', preview='full_new/curtains_wobble_1m57.mp4', n=445, f0=305, kind='f01', chunk=40,
